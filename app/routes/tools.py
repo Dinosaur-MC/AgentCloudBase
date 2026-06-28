@@ -1,6 +1,7 @@
 """特化工具路由 — /tool/*"""
 
-from fastapi import APIRouter, Request, Query
+from fastapi import APIRouter, Request, Depends
+from app.schemas import EditParams
 from app.utils import (
     find_share_by_vpath,
     check_access,
@@ -17,38 +18,33 @@ router = APIRouter(prefix="/tool", tags=["tools"])
 @router.get("/edit")
 async def tool_edit(
     request: Request,
-    path: str = Query(...),
-    key: str = Query(...),
-    old_str: str = Query(...),
-    new_str: str = Query(...),
-    replace_all: int = Query(0),
-    json: int = Query(0, alias="json"),
+    params: EditParams = Depends(),
 ):
-    json_mode = json == 1
-    share = find_share_by_vpath("/" + path)
+    json_mode = params.json_mode
+    share = find_share_by_vpath("/" + params.path)
     if not share:
         return error_response("No share matched", 404, json_mode)
-    err_msg = check_access(share, key)
+    err_msg = check_access(share, params.key)
     if err_msg:
         write_log(
             {
                 "action": "access_denied",
-                "path": path,
+                "path": params.path,
                 "ip": request.client.host,
-                "key": mask_key(key),
+                "key": mask_key(params.key),
                 "reason": err_msg,
             }
         )
         return error_response(err_msg, 403, json_mode)
-    abs_path = get_absolute_path(share, "/" + path)
+    abs_path = get_absolute_path(share, "/" + params.path)
     return await handle_edit(
         share,
         abs_path,
-        old_str,
-        new_str,
-        replace_all == 1,
-        path,
+        params.old_str,
+        params.new_str,
+        params.replace_all,
+        params.path,
         request.client.host,
-        key,
+        params.key,
         json_mode,
     )
