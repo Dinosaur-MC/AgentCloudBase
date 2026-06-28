@@ -33,6 +33,8 @@ class ShareConfig(BaseModel):
     real_path: str
     permissions: dict = {"list": True, "read": True, "write": False, "delete": False, "rename": False}
     access_key: str
+    enabled: bool = True
+    access_key_expires: str = ""  # ISO date string, empty = never expires
 
 
 # ==================== 配置读写 ====================
@@ -292,6 +294,15 @@ def find_share_by_vpath(virtual_path: str) -> Optional[ShareConfig]:
 def validate_access_key(share: ShareConfig, key: Optional[str]) -> bool:
     if not key:
         return False
+    if not share.enabled:
+        return False
+    if share.access_key_expires:
+        try:
+            exp = datetime.fromisoformat(share.access_key_expires)
+            if datetime.now() > exp:
+                return False
+        except (ValueError, TypeError):
+            pass  # 格式不对当作无期限
     return share.access_key == key
 
 

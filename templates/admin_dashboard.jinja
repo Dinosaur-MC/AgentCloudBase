@@ -6,7 +6,7 @@
   :root{--primary:#2563eb;--bg:#f1f5f9;--card:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b;--success:#16a34a}
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding:24px}
-  .container{max-width:900px;margin:0 auto}
+  .container{max-width:960px;margin:0 auto}
   .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
   .header h1{font-size:24px;font-weight:600}
   .nav a{color:var(--primary);text-decoration:none;font-size:14px;margin-left:16px}
@@ -19,14 +19,21 @@
   .section h3{font-size:16px;font-weight:600;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
   .share-item{padding:12px 0;border-bottom:1px solid #f1f5f9;font-size:14px}
   .share-item:last-child{border-bottom:none}
+  .share-item .title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .share-meta{font-size:12px;color:var(--muted);margin:4px 0}
   .perms{font-size:12px;color:var(--muted)}
   .perms .on{color:var(--success);font-weight:600}
   .perms .off{color:#94a3b8}
-  .btn-sm{padding:3px 10px;font-size:12px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;color:#dc2626;margin-left:8px}
+  .tag{display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;font-weight:600}
+  .tag-on{background:#dcfce7;color:#15803d}
+  .tag-off{background:#fef2f2;color:#dc2626}
+  .tag-expired{background:#fef2f2;color:#dc2626}
+  .btn-sm{padding:3px 10px;font-size:12px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;color:#dc2626}
   .btn-sm:hover{background:#fef2f2}
   .btn-primary{padding:8px 20px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer}
   .btn-primary:hover{background:#1d4ed8}
+  .btn-update{padding:4px 14px;background:var(--success);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer}
+  .btn-update:hover{background:#15803d}
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .form-grid label{font-size:13px;font-weight:500;display:block;margin-bottom:4px}
   .form-grid input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none}
@@ -34,6 +41,10 @@
   .form-full{grid-column:1/-1}
   .checkbox-group{display:flex;gap:12px;flex-wrap:wrap}
   .checkbox-group label{font-weight:400;display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px}
+  .update-form{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;padding:8px 10px;background:#f8fafc;border-radius:6px}
+  .update-form input{padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px;outline:none}
+  .update-form input:focus{border-color:var(--primary)}
+  .update-form label{font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer}
 </style></head>
 <body>
   <div class="container">
@@ -59,19 +70,39 @@
       <h3>共享目录</h3>
       {% for share in shares %}
       <div class="share-item">
-        <strong>{{ share.name }}</strong>
-        <span style="font-size:12px;color:var(--muted)"> {{ share.virtual_path }} &rarr; {{ share.real_path }}</span>
-        <div class="share-meta">密钥: {{ share.access_key }}</div>
+        <div class="title">
+          <strong>{{ share.name }}</strong>
+          {% if share.enabled %}
+            <span class="tag tag-on">启用</span>
+          {% else %}
+            <span class="tag tag-off">停用</span>
+          {% endif %}
+          <span style="font-size:12px;color:var(--muted)">{{ share.virtual_path }} &rarr; {{ share.real_path }}</span>
+        </div>
+        <div class="share-meta">
+          密钥: {{ share.access_key }}
+          {% if share.access_key_expires %}
+            | 过期: {{ share.access_key_expires }}
+            {% set exp = share.access_key_expires %}
+            {% if exp < now %}<span class="tag tag-expired">已过期</span>{% endif %}
+          {% endif %}
+        </div>
         <div class="perms">
           list=<span class="{% if share.permissions.list %}on">yes{% else %}off">no{% endif %}</span>
           read=<span class="{% if share.permissions.read %}on">yes{% else %}off">no{% endif %}</span>
           write=<span class="{% if share.permissions.write %}on">yes{% else %}off">no{% endif %}</span>
           delete=<span class="{% if share.permissions.delete %}on">yes{% else %}off">no{% endif %}</span>
           rename=<span class="{% if share.permissions.rename %}on">yes{% else %}off">no{% endif %}</span>
-          <form method="post" action="/admin/shares/delete/{{ share.id }}" style="display:inline">
+          <form method="post" action="/admin/shares/delete/{{ share.id }}" style="display:inline;margin-left:8px">
             <button class="btn-sm" type="submit">删除</button>
           </form>
         </div>
+        <form class="update-form" method="post" action="/admin/shares/update/{{ share.id }}">
+          <label><input type="checkbox" name="enabled" {% if share.enabled %}checked{% endif %}> 启用</label>
+          <input name="access_key" placeholder="新密钥(留空不变)" value="" size="20">
+          <input name="access_key_expires" type="date" value="{{ share.access_key_expires[:10] if share.access_key_expires else '' }}">
+          <button class="btn-update" type="submit">更新</button>
+        </form>
       </div>
       {% else %}
       <p style="color:var(--muted);font-size:14px;">暂无共享目录</p>

@@ -106,8 +106,9 @@ async def admin_page(request: Request):
         return templates.TemplateResponse(request, "admin_login.jinja", {"error": None})
     configs = load_config()
     stats = compute_stats()
+    now_str = datetime.now().strftime("%Y-%m-%d")
     return templates.TemplateResponse(
-        request, "admin_dashboard.jinja", {"shares": configs, "stats": stats}
+        request, "admin_dashboard.jinja", {"shares": configs, "stats": stats, "now": now_str}
     )
 
 
@@ -148,6 +149,8 @@ async def add_share(
     delete_perm: bool = Form(False),
     rename_perm: bool = Form(False),
     access_key: str = Form(...),
+    enabled: bool = Form(True),
+    access_key_expires: str = Form(""),
 ):
     admin = get_admin_from_cookie(request)
     if not admin:
@@ -167,6 +170,8 @@ async def add_share(
             "rename": rename_perm,
         },
         access_key=access_key,
+        enabled=enabled,
+        access_key_expires=access_key_expires,
     )
     configs.append(new_share)
     save_config(configs)
@@ -187,6 +192,30 @@ async def delete_share(request: Request, share_id: str):
         raise HTTPException(status_code=404, detail="Share not found")
     save_config(new_configs)
     write_log({"action": "share_deleted", "id": share_id, "ip": request.client.host})
+    return RedirectResponse("/admin", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/admin/shares/update/{share_id}")
+async def update_share(
+    request: Request,
+    share_id: str,
+    enabled: bool = Form(False),
+    access_key: str = Form(""),
+    access_key_expires: str = Form(""),
+):
+    admin = get_admin_from_cookie(request)
+    if not admin:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    configs = load_config()
+    for share in configs:
+        if share.id == share_id:
+            share.enabled = enabled
+            if access_key:
+                share.access_key = access_key
+            share.access_key_expires = access_key_expires
+            save_config(configs)
+            write_log({"action": "share_updated", "id": share_id, "ip": request.client.host})
+            break
     return RedirectResponse("/admin", status_code=status.HTTP_303_SEE_OTHER)
 
 
