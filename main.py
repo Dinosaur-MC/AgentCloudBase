@@ -102,11 +102,11 @@ async def health_check():
 async def admin_page(request: Request):
     admin = get_admin_from_cookie(request)
     if not admin:
-        return templates.TemplateResponse(request, "admin_login.html", {"error": None})
+        return templates.TemplateResponse(request, "admin_login.jinja", {"error": None})
     configs = load_config()
     stats = compute_stats()
     return templates.TemplateResponse(
-        request, "admin_dashboard.html", {"shares": configs, "stats": stats}
+        request, "admin_dashboard.jinja", {"shares": configs, "stats": stats}
     )
 
 
@@ -114,7 +114,7 @@ async def admin_page(request: Request):
 async def admin_login(request: Request, key: str = Form(...)):
     if key != settings.admin_key:
         return templates.TemplateResponse(
-            request, "admin_login.html", {"error": "Invalid admin key"}
+            request, "admin_login.jinja", {"error": "Invalid admin key"}
         )
     token = create_jwt_token({"sub": "admin"})
     resp = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
@@ -248,7 +248,7 @@ async def view_logs(
     total_pages = max(1, (total_logs + per_page - 1) // per_page)
     return templates.TemplateResponse(
         request,
-        "admin_logs.html",
+        "admin_logs.jinja",
         {
             "logs": logs,
             "page": page,
@@ -408,7 +408,7 @@ async def serve_content(
             )
         return templates.TemplateResponse(
             request,
-            "listing.html",
+            "listing.jinja",
             {
                 "path": path,
                 "entries": entries,
@@ -467,7 +467,7 @@ async def serve_content(
         line_count = content_preview.count("\n") + 1 if is_text else 0
         return templates.TemplateResponse(
             request,
-            "file_display.html",
+            "file_display.jinja",
             {
                 "path": path,
                 "filename": abs_path.name,
@@ -603,7 +603,7 @@ async def query_permission(path: str, key: str = Query(...)):
 # ------------------- 帮助页 -------------------
 @app.get("/help", response_class=HTMLResponse)
 async def help_page(request: Request, level: str = "basic"):
-    return templates.TemplateResponse(request, "help.html", {"level": level})
+    return templates.TemplateResponse(request, "help.jinja", {"level": level})
 
 
 # ------------------- 启动入口 -------------------
