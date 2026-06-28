@@ -8,10 +8,21 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import (
-    FastAPI, Request, HTTPException, Query, Form, File, UploadFile, status,
+    FastAPI,
+    Request,
+    HTTPException,
+    Query,
+    Form,
+    File,
+    UploadFile,
+    status,
 )
 from fastapi.responses import (
-    HTMLResponse, RedirectResponse, FileResponse, PlainTextResponse, JSONResponse,
+    HTMLResponse,
+    RedirectResponse,
+    FileResponse,
+    PlainTextResponse,
+    JSONResponse,
 )
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,14 +30,27 @@ import uvicorn
 
 from config import settings
 from utils import (
-    ShareConfig, load_config, save_config,
-    write_log, _iter_all_logs, _list_log_shards, count_resource_views, compute_stats,
-    find_share_by_vpath, validate_access_key, get_absolute_path,
-    require_write_permission, require_delete_permission, require_rename_permission,
-    error_response, success_response,
-    handle_mkdir, handle_upload_url, handle_content_upload,
-    handle_delete, handle_rename, handle_put_upload, handle_multipart_upload,
-    create_jwt_token, get_admin_from_cookie, mask_key,
+    ShareConfig,
+    load_config,
+    save_config,
+    write_log,
+    iter_all_logs,
+    count_resource_views,
+    compute_stats,
+    find_share_by_vpath,
+    validate_access_key,
+    get_absolute_path,
+    error_response,
+    handle_mkdir,
+    handle_upload_url,
+    handle_content_upload,
+    handle_delete,
+    handle_rename,
+    handle_put_upload,
+    handle_multipart_upload,
+    create_jwt_token,
+    get_admin_from_cookie,
+    mask_key,
 )
 
 # ------------------- FastAPI 应用 -------------------
@@ -54,14 +78,16 @@ async def log_requests(request: Request, call_next):
     path = request.url.path
     # 管理页面的 GET 请求不记日志（登录/登出/配置变更由各自路由记录）
     if not (request.method == "GET" and path.startswith("/admin")):
-        write_log({
-            "action": "request",
-            "method": request.method,
-            "path": path,
-            "status": response.status_code,
-            "duration_ms": duration_ms,
-            "ip": request.client.host if request.client else "unknown",
-        })
+        write_log(
+            {
+                "action": "request",
+                "method": request.method,
+                "path": path,
+                "status": response.status_code,
+                "duration_ms": duration_ms,
+                "ip": request.client.host if request.client else "unknown",
+            }
+        )
     return response
 
 
@@ -93,7 +119,9 @@ async def admin_login(request: Request, key: str = Form(...)):
     token = create_jwt_token({"sub": "admin"})
     resp = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
     resp.set_cookie(
-        "admin_token", token, httponly=True,
+        "admin_token",
+        token,
+        httponly=True,
         max_age=settings.access_token_expire_minutes * 60,
     )
     write_log({"action": "admin_login", "ip": request.client.host})
@@ -131,8 +159,11 @@ async def add_share(
         virtual_path=virtual_path,
         real_path=os.path.realpath(real_path),
         permissions={
-            "list": list_perm, "read": read_perm,
-            "write": write_perm, "delete": delete_perm, "rename": rename_perm,
+            "list": list_perm,
+            "read": read_perm,
+            "write": write_perm,
+            "delete": delete_perm,
+            "rename": rename_perm,
         },
         access_key=access_key,
     )
@@ -181,38 +212,56 @@ async def view_logs(
     admin = get_admin_from_cookie(request)
     if not admin:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    all_logs = _iter_all_logs()
+    all_logs = iter_all_logs()
     if action:
         all_logs = [l for l in all_logs if l.get("action") == action]
     if path_filter:
-        all_logs = [l for l in all_logs if path_filter.lower() in l.get("path", "").lower()]
+        all_logs = [
+            l for l in all_logs if path_filter.lower() in l.get("path", "").lower()
+        ]
     if ip_filter:
         all_logs = [l for l in all_logs if ip_filter in l.get("ip", "")]
     if keyword:
         kw = keyword.lower()
-        all_logs = [l for l in all_logs if kw in json.dumps(l, ensure_ascii=False).lower()]
+        all_logs = [
+            l for l in all_logs if kw in json.dumps(l, ensure_ascii=False).lower()
+        ]
     if date_from:
         try:
             dt_from = datetime.fromisoformat(date_from)
-            all_logs = [l for l in all_logs if datetime.fromisoformat(l["timestamp"]) >= dt_from]
+            all_logs = [
+                l for l in all_logs if datetime.fromisoformat(l["timestamp"]) >= dt_from
+            ]
         except (ValueError, KeyError):
             pass
     if date_to:
         try:
             dt_to = datetime.fromisoformat(date_to + "T23:59:59")
-            all_logs = [l for l in all_logs if datetime.fromisoformat(l["timestamp"]) <= dt_to]
+            all_logs = [
+                l for l in all_logs if datetime.fromisoformat(l["timestamp"]) <= dt_to
+            ]
         except (ValueError, KeyError):
             pass
     total_logs = len(all_logs)
     offset = (page - 1) * per_page
-    logs = list(reversed(all_logs))[offset: offset + per_page]
+    logs = list(reversed(all_logs))[offset : offset + per_page]
     total_pages = max(1, (total_logs + per_page - 1) // per_page)
-    return templates.TemplateResponse(request, "admin_logs.html", {
-        "logs": logs, "page": page, "total_pages": total_pages, "total_logs": total_logs,
-        "action": action or "", "path_filter": path_filter or "",
-        "ip_filter": ip_filter or "", "keyword": keyword or "",
-        "date_from": date_from or "", "date_to": date_to or "",
-    })
+    return templates.TemplateResponse(
+        request,
+        "admin_logs.html",
+        {
+            "logs": logs,
+            "page": page,
+            "total_pages": total_pages,
+            "total_logs": total_logs,
+            "action": action or "",
+            "path_filter": path_filter or "",
+            "ip_filter": ip_filter or "",
+            "keyword": keyword or "",
+            "date_from": date_from or "",
+            "date_to": date_to or "",
+        },
+    )
 
 
 # ------------------- 文件服务 -------------------
@@ -235,46 +284,102 @@ async def serve_content(
     share = find_share_by_vpath("/" + path)
     if not share:
         if json_mode:
-            return JSONResponse(status_code=404, content={"success": False, "error": "No share matched", "code": 404})
+            return JSONResponse(
+                status_code=404,
+                content={"success": False, "error": "No share matched", "code": 404},
+            )
         raise HTTPException(status_code=404, detail="No share matched")
     if not validate_access_key(share, key):
-        write_log({"action": "access_denied", "path": path, "ip": request.client.host,
-                    "key": mask_key(key)})
+        write_log(
+            {
+                "action": "access_denied",
+                "path": path,
+                "ip": request.client.host,
+                "key": mask_key(key),
+            }
+        )
         if json_mode:
-            return JSONResponse(status_code=403, content={"success": False, "error": "Invalid access key", "code": 403})
+            return JSONResponse(
+                status_code=403,
+                content={"success": False, "error": "Invalid access key", "code": 403},
+            )
         raise HTTPException(status_code=403, detail="Invalid access key")
     abs_path = get_absolute_path(share, "/" + path)
 
     # 操作分发
     if mkdir == 1:
-        return await handle_mkdir(share, abs_path, path, request.client.host, key, json_mode)
+        return await handle_mkdir(
+            share, abs_path, path, request.client.host, key, json_mode
+        )
     if upload_url:
         fn = os.path.basename(path.rstrip("/")) or ""
-        return await handle_upload_url(share, abs_path, upload_url, fn, path, request.client.host, key, json_mode)
+        return await handle_upload_url(
+            share, abs_path, upload_url, fn, path, request.client.host, key, json_mode
+        )
     if content is not None:
         fn = os.path.basename(path.rstrip("/")) or ""
-        return await handle_content_upload(share, abs_path, content, fn, path, request.client.host, key, json_mode)
+        return await handle_content_upload(
+            share, abs_path, content, fn, path, request.client.host, key, json_mode
+        )
     if delete == 1:
-        return await handle_delete(share, abs_path, path, request.client.host, key, json_mode)
+        return await handle_delete(
+            share, abs_path, path, request.client.host, key, json_mode
+        )
     if rename_to:
-        return await handle_rename(share, abs_path, rename_to, path, request.client.host, key, json_mode=json_mode)
+        return await handle_rename(
+            share,
+            abs_path,
+            rename_to,
+            path,
+            request.client.host,
+            key,
+            json_mode=json_mode,
+        )
     if move_to:
-        return await handle_rename(share, abs_path, None, path, request.client.host, key, move_target=move_to, json_mode=json_mode)
+        return await handle_rename(
+            share,
+            abs_path,
+            None,
+            path,
+            request.client.host,
+            key,
+            move_target=move_to,
+            json_mode=json_mode,
+        )
 
     # 常规文件/目录访问
-    log_entry = {"action": "access", "path": path, "ip": request.client.host,
-                  "key": key[:4] + "***", "operation": "unknown"}
+    log_entry = {
+        "action": "access",
+        "path": path,
+        "ip": request.client.host,
+        "key": key[:4] + "***",
+        "operation": "unknown",
+    }
     if not abs_path.exists():
         write_log({**log_entry, "status": 404})
         if json_mode:
-            return JSONResponse(status_code=404, content={"success": False, "error": "File or directory not found", "code": 404})
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "success": False,
+                    "error": "File or directory not found",
+                    "code": 404,
+                },
+            )
         raise HTTPException(status_code=404, detail="File or directory not found")
 
     if abs_path.is_dir():
         if not share.permissions.get("list", False):
             write_log({**log_entry, "operation": "list_denied", "status": 403})
             if json_mode:
-                return JSONResponse(status_code=403, content={"success": False, "error": "Listing not allowed", "code": 403})
+                return JSONResponse(
+                    status_code=403,
+                    content={
+                        "success": False,
+                        "error": "Listing not allowed",
+                        "code": 403,
+                    },
+                )
             raise HTTPException(status_code=403, detail="Listing not allowed")
         entries = []
         for entry in sorted(abs_path.iterdir()):
@@ -282,26 +387,50 @@ async def serve_content(
                 continue
             st = entry.stat()
             entry_type = "dir" if entry.is_dir() else "file"
-            entries.append({
-                "name": entry.name, "type": entry_type,
-                "size": st.st_size if entry_type == "file" else 0,
-                "modified": datetime.fromtimestamp(st.st_mtime).isoformat(),
-            })
+            entries.append(
+                {
+                    "name": entry.name,
+                    "type": entry_type,
+                    "size": st.st_size if entry_type == "file" else 0,
+                    "modified": datetime.fromtimestamp(st.st_mtime).isoformat(),
+                }
+            )
         log_entry["operation"] = "list_dir"
         write_log(log_entry)
         if json_mode:
-            return JSONResponse(content={"type": "directory", "path": path, "entries": entries, "share_name": share.name})
-        return templates.TemplateResponse(request, "listing.html", {
-            "path": path, "entries": entries, "key": key, "share_name": share.name,
-            "can_write": share.permissions.get("write", False),
-            "can_delete": share.permissions.get("delete", False),
-            "can_rename": share.permissions.get("rename", False),
-        })
+            return JSONResponse(
+                content={
+                    "type": "directory",
+                    "path": path,
+                    "entries": entries,
+                    "share_name": share.name,
+                }
+            )
+        return templates.TemplateResponse(
+            request,
+            "listing.html",
+            {
+                "path": path,
+                "entries": entries,
+                "key": key,
+                "share_name": share.name,
+                "can_write": share.permissions.get("write", False),
+                "can_delete": share.permissions.get("delete", False),
+                "can_rename": share.permissions.get("rename", False),
+            },
+        )
     else:
         if not share.permissions.get("read", False):
             write_log({**log_entry, "operation": "read_denied", "status": 403})
             if json_mode:
-                return JSONResponse(status_code=403, content={"success": False, "error": "Read not allowed", "code": 403})
+                return JSONResponse(
+                    status_code=403,
+                    content={
+                        "success": False,
+                        "error": "Read not allowed",
+                        "code": 403,
+                    },
+                )
             raise HTTPException(status_code=403, detail="Read not allowed")
         log_entry["operation"] = "read_file"
         write_log(log_entry)
@@ -323,29 +452,43 @@ async def serve_content(
             except (UnicodeDecodeError, PermissionError, MemoryError):
                 pass
         if json_mode:
-            return JSONResponse(content={
-                "type": "file", "path": path, "filename": abs_path.name,
-                "size": file_stat.st_size,
-                "modified": datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
-                "content": content_preview if is_text else None, "is_text": is_text,
-            })
+            return JSONResponse(
+                content={
+                    "type": "file",
+                    "path": path,
+                    "filename": abs_path.name,
+                    "size": file_stat.st_size,
+                    "modified": datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
+                    "content": content_preview if is_text else None,
+                    "is_text": is_text,
+                }
+            )
         view_count = count_resource_views("/" + path)
         line_count = content_preview.count("\n") + 1 if is_text else 0
-        return templates.TemplateResponse(request, "file_display.html", {
-            "path": path, "filename": abs_path.name,
-            "size": file_stat.st_size, "line_count": line_count,
-            "modified": datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
-            "content": content_preview, "is_text": is_text,
-            "key": key, "view_count": view_count,
-            "can_write": share.permissions.get("write", False),
-            "can_delete": share.permissions.get("delete", False),
-            "can_rename": share.permissions.get("rename", False),
-        })
+        return templates.TemplateResponse(
+            request,
+            "file_display.html",
+            {
+                "path": path,
+                "filename": abs_path.name,
+                "size": file_stat.st_size,
+                "line_count": line_count,
+                "modified": datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
+                "content": content_preview,
+                "is_text": is_text,
+                "key": key,
+                "view_count": view_count,
+                "can_write": share.permissions.get("write", False),
+                "can_delete": share.permissions.get("delete", False),
+                "can_rename": share.permissions.get("rename", False),
+            },
+        )
 
 
 @app.put("/s/{path:path}")
 async def serve_content_put(
-    request: Request, path: str,
+    request: Request,
+    path: str,
     key: str = Query(None),
     json: int = Query(0, alias="json"),
     filename: str = Query(None),
@@ -355,16 +498,25 @@ async def serve_content_put(
     if not share:
         return error_response("No share matched", 404, json_mode)
     if not validate_access_key(share, key):
-        write_log({"action": "access_denied", "path": path, "ip": request.client.host,
-                    "key": mask_key(key)})
+        write_log(
+            {
+                "action": "access_denied",
+                "path": path,
+                "ip": request.client.host,
+                "key": mask_key(key),
+            }
+        )
         return error_response("Invalid access key", 403, json_mode)
     abs_path = get_absolute_path(share, "/" + path)
-    return await handle_put_upload(request, share, abs_path, path, key, json_mode, filename)
+    return await handle_put_upload(
+        request, share, abs_path, path, key, json_mode, filename
+    )
 
 
 @app.post("/s/{path:path}")
 async def serve_content_post(
-    request: Request, path: str,
+    request: Request,
+    path: str,
     key: str = Query(None),
     mkdir: int = Query(0),
     json: int = Query(0, alias="json"),
@@ -376,28 +528,55 @@ async def serve_content_post(
         if not share:
             return error_response("No share matched", 404, json_mode)
         if not validate_access_key(share, key):
-            write_log({"action": "access_denied", "path": path, "ip": request.client.host,
-                        "key": mask_key(key)})
+            write_log(
+                {
+                    "action": "access_denied",
+                    "path": path,
+                    "ip": request.client.host,
+                    "key": mask_key(key),
+                }
+            )
             return error_response("Invalid access key", 403, json_mode)
         abs_path = get_absolute_path(share, "/" + path)
-        return await handle_multipart_upload(request, share, abs_path, path, key, file, json_mode)
+        return await handle_multipart_upload(
+            request, share, abs_path, path, key, file, json_mode
+        )
     return await serve_content(
-        request=request, path=path, key=key,
-        raw=0, download=0, json=json, mkdir=mkdir,
-        upload_url=None, content=None, delete=0, rename_to=None, move_to=None,
+        request=request,
+        path=path,
+        key=key,
+        raw=0,
+        download=0,
+        json=json,
+        mkdir=mkdir,
+        upload_url=None,
+        content=None,
+        delete=0,
+        rename_to=None,
+        move_to=None,
     )
 
 
 @app.delete("/s/{path:path}")
 async def serve_content_delete(
-    request: Request, path: str,
+    request: Request,
+    path: str,
     key: str = Query(None),
     json: int = Query(0, alias="json"),
 ):
     return await serve_content(
-        request=request, path=path, key=key,
-        raw=0, download=0, json=json, mkdir=0,
-        upload_url=None, content=None, delete=1, rename_to=None, move_to=None,
+        request=request,
+        path=path,
+        key=key,
+        raw=0,
+        download=0,
+        json=json,
+        mkdir=0,
+        upload_url=None,
+        content=None,
+        delete=1,
+        rename_to=None,
+        move_to=None,
     )
 
 
@@ -407,9 +586,13 @@ async def query_permission(path: str, key: str = Query(...)):
     """查询指定路径的访问权限（无需对应权限即可查询）"""
     share = find_share_by_vpath("/" + path)
     if not share:
-        return JSONResponse(status_code=404, content={"success": False, "error": "No share matched"})
+        return JSONResponse(
+            status_code=404, content={"success": False, "error": "No share matched"}
+        )
     if not validate_access_key(share, key):
-        return JSONResponse(status_code=403, content={"success": False, "error": "Invalid access key"})
+        return JSONResponse(
+            status_code=403, content={"success": False, "error": "Invalid access key"}
+        )
     return {
         "path": "/" + path,
         "share_name": share.name,

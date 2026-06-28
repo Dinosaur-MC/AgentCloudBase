@@ -108,7 +108,7 @@ def write_log(entry: dict):
         _cleanup_old_logs()
 
 
-def _iter_all_logs() -> List[dict]:
+def iter_all_logs() -> List[dict]:
     logs: List[dict] = []
     for shard in _list_log_shards():
         try:
@@ -123,7 +123,7 @@ def _iter_all_logs() -> List[dict]:
 
 
 def read_logs(limit: int = 100, offset: int = 0) -> List[dict]:
-    logs = _iter_all_logs()
+    logs = iter_all_logs()
     return list(reversed(logs))[offset: offset + limit]
 
 
@@ -149,7 +149,7 @@ def compute_stats() -> dict:
 
 def count_resource_views(path: str) -> int:
     target = path.lstrip("/")
-    return sum(1 for entry in _iter_all_logs()
+    return sum(1 for entry in iter_all_logs()
                if entry.get("action") == "access" and entry.get("path") == target)
 
 
