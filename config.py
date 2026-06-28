@@ -4,6 +4,11 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    # ------------------- 服务配置 --------------------
+    listen_host: str = "0.0.0.0"
+    listen_port: int = 8000
+    debug: bool = False
+    
     # ------------------- 管理员配置 -------------------
     admin_key: str = "admin123"
     secret_key: str = "supersecretkey"

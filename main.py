@@ -608,4 +608,9 @@ async def help_page(request: Request, level: str = "basic"):
 
 # ------------------- 启动入口 -------------------
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "main:app",
+        host=settings.listen_host,
+        port=settings.listen_port,
+        reload=settings.debug,
+    )
