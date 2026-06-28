@@ -156,8 +156,15 @@ def count_resource_views(path: str) -> int:
         try:
             with open(shard, "r", encoding="utf-8") as f:
                 for line in f:
-                    if path in line:
-                        count += 1
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        entry = json.loads(line)
+                        if entry.get("action") == "access" and entry.get("path") == path.lstrip("/"):
+                            count += 1
+                    except json.JSONDecodeError:
+                        continue
         except FileNotFoundError:
             continue
     return count
