@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html>
-<head><title>帮助</title></head>
+<head><title>帮助</title>
+<style>
+  body { font-family: sans-serif; margin: 20px; max-width: 800px; }
+  code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+  pre { background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }
+  h3 { margin-top: 25px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 13px; }
+  th { background: #f0f0f0; }
+</style></head>
 <body>
   {% if level == "basic" %}
     <h2>基础使用说明</h2>
@@ -8,21 +17,83 @@
     <code>http://host:8000/s/虚拟路径?key=你的访问密钥</code></p>
     <p>可添加参数：<br>
     - <code>&raw=1</code> 获取纯文本原始内容（仅文件）<br>
-    - <code>&download=1</code> 下载文件</p>
+    - <code>&download=1</code> 下载文件<br>
+    - <code>&json=1</code> 以 JSON 格式返回结果（适合 AI Agent 解析）</p>
+    <p><strong>写操作参数（需要对应权限）：</strong><br>
+    - <code>&mkdir=1</code> 创建目录<br>
+    - <code>&upload_url=https://...</code> 从 URL 拉取文件到服务器<br>
+    - <code>&content=文本内容</code> 上传纯文本内容（64KB 上限）<br>
+    - <code>&delete=1</code> 删除文件或空目录<br>
+    - <code>&rename_to=新名称</code> 重命名文件/目录<br>
+    - <code>&move_to=/目标路径</code> 移动到其他目录</p>
+    <p><strong>其他 HTTP 方法：</strong><br>
+    <strong>PUT /s/{path}?key=xxx</strong> — 上传文件（Body 为原始内容）<br>
+    <strong>POST /s/{path}?key=xxx</strong> — 上传文件（multipart/form-data）<br>
+    <strong>DELETE /s/{path}?key=xxx</strong> — 删除文件或空目录</p>
     <a href="/help?level=full">完整说明</a>
   {% else %}
     <h2>完整使用说明</h2>
     <p>本服务为 AI Agent 设计，提供类 FTP 的加密访问。</p>
+
     <h3>端点</h3>
-    <ul>
-      <li><code>/s/{path}?key=&lt;access_key&gt;</code> – 浏览目录/查看文件</li>
-      <li><code>/admin</code> – 管理员界面（需管理员密钥）</li>
-      <li><code>/help?level=basic|full</code> – 帮助</li>
-    </ul>
+    <table>
+      <tr><th>方法</th><th>路径</th><th>说明</th><th>所需权限</th></tr>
+      <tr><td>GET</td><td>/s/{path}?key=&lt;key&gt;</td><td>查看文件或列出目录</td><td>read / list</td></tr>
+      <tr><td>GET</td><td>/s/{path}?key=&lt;key&gt;&mkdir=1</td><td>创建目录</td><td>write</td></tr>
+      <tr><td>GET</td><td>/s/{path}?key=&lt;key&gt;&upload_url=URL</td><td>从 URL 拉取文件</td><td>write</td></tr>
+      <tr><td>GET</td><td>/s/{path}?key=&lt;key&gt;&content=数据</td><td>上传文本内容（&le;64KB）</td><td>write</td></tr>
+      <tr><td>GET</td><td>/s/{path}?key=&lt;key&gt;&delete=1</td><td>删除文件或空目录</td><td>delete</td></tr>
+      <tr><td>GET</td><td>/s/{path}?key=&lt;key&gt;&rename_to=新名</td><td>重命名</td><td>rename</td></tr>
+      <tr><td>GET</td><td>/s/{path}?key=&lt;key&gt;&move_to=/目标</td><td>移动</td><td>rename</td></tr>
+      <tr><td>PUT</td><td>/s/{path}?key=&lt;key&gt;</td><td>上传文件（Body=原始内容）</td><td>write</td></tr>
+      <tr><td>POST</td><td>/s/{path}?key=&lt;key&gt;</td><td>上传文件（multipart）</td><td>write</td></tr>
+      <tr><td>DELETE</td><td>/s/{path}?key=&lt;key&gt;</td><td>删除文件或空目录</td><td>delete</td></tr>
+    </table>
+
+    <h3>通用参数</h3>
+    <p><code>&json=1</code> — 所有端点返回 JSON 而非 HTML<br>
+    <code>&raw=1</code> — 查看文件原始内容（纯文本）<br>
+    <code>&download=1</code> — 下载文件</p>
+
     <h3>权限说明</h3>
-    <p>每个共享目录可独立配置列表/读取权限。密钥错误或权限不足返回 403。</p>
-    <h3>安全</h3>
-    <p>务必在 HTTPS 后使用，避免密钥泄露。日志中密钥仅记录前4字符。</p>
+    <p>每个共享目录可独立配置：<strong>list</strong>（列出）、<strong>read</strong>（读取）、<strong>write</strong>（写入/上传）、<strong>delete</strong>（删除）、<strong>rename</strong>（重命名）权限。密钥错误或权限不足返回 403。</p>
+
+    <h3>安全限制</h3>
+    <p>- 上传文件最大 500MB<br>
+    - content= 参数最大 64KB<br>
+    - upload_url 仅支持 HTTPS，拒绝内网地址（SSRF 防护）<br>
+    - 写操作每分钟最多 60 次（速率限制）<br>
+    - 文件名自动净化，拒绝路径穿越字符<br>
+    - 日志中密钥仅记录前4字符</p>
+
+    <h3>限制 Agent（仅 GET）使用示例</h3>
+    <pre>
+# 创建目录
+GET /s/data?key=abc&mkdir=1
+
+# 从 URL 上传文件
+GET /s/data?key=abc&upload_url=https://example.com/file.zip
+
+# 上传文本内容
+GET /s/data/note.txt?key=abc&content=Hello+World
+
+# 删除文件
+GET /s/data/old.txt?key=abc&delete=1
+
+# 重命名
+GET /s/data/old.txt?key=abc&rename_to=new.txt
+
+# JSON 输出
+GET /s/data?key=abc&json=1
+    </pre>
+
+    <h3>管理</h3>
+    <ul>
+      <li><code>/admin</code> — 管理员界面（需管理员密钥）</li>
+      <li><code>/admin/stats</code> — 服务器统计（JSON）</li>
+      <li><code>/admin/logs?action=...&path=...&ip=...&keyword=...</code> — 日志搜索</li>
+      <li><code>/health</code> — 健康检查</li>
+    </ul>
     <a href="/help?level=basic">基础说明</a>
   {% endif %}
 </body>

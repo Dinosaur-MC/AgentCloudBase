@@ -1,26 +1,69 @@
 <!DOCTYPE html>
 <html>
-<head><title>访问日志</title></head>
+<head><title>访问日志</title>
+<style>
+  body { font-family: sans-serif; margin: 20px; }
+  .filter-form { background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .filter-form input, .filter-form select { padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; }
+  .filter-form button { padding: 4px 12px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 13px; }
+  th { background: #f0f0f0; white-space: nowrap; }
+  tr:hover { background: #fafafa; }
+  .pagination { margin-top: 15px; }
+  .log-detail { font-size: 11px; color: #888; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style></head>
 <body>
   <h1>访问日志</h1>
   <a href="/admin">返回管理</a>
-  <table border="1" cellpadding="5">
-    <tr><th>时间</th><th>操作</th><th>路径</th><th>IP</th><th>密钥片段</th><th>详情</th></tr>
+
+  <form class="filter-form" method="get">
+    <select name="action">
+      <option value="">全部操作</option>
+      <option value="request" {{ 'selected' if action == 'request' }}>请求</option>
+      <option value="access" {{ 'selected' if action == 'access' }}>访问</option>
+      <option value="access_denied" {{ 'selected' if action == 'access_denied' }}>拒绝访问</option>
+      <option value="admin_login" {{ 'selected' if action == 'admin_login' }}>管理员登录</option>
+      <option value="share_added" {{ 'selected' if action == 'share_added' }}>添加共享</option>
+      <option value="share_deleted" {{ 'selected' if action == 'share_deleted' }}>删除共享</option>
+      <option value="file_uploaded" {{ 'selected' if action == 'file_uploaded' }}>文件上传</option>
+      <option value="file_deleted" {{ 'selected' if action == 'file_deleted' }}>文件删除</option>
+      <option value="dir_created" {{ 'selected' if action == 'dir_created' }}>创建目录</option>
+      <option value="file_renamed" {{ 'selected' if action == 'file_renamed' }}>重命名</option>
+    </select>
+    <input name="path" placeholder="路径" value="{{ path_filter }}">
+    <input name="ip" placeholder="IP" value="{{ ip_filter }}">
+    <input name="keyword" placeholder="关键词" value="{{ keyword }}">
+    <input name="date_from" type="date" value="{{ date_from }}">
+    <input name="date_to" type="date" value="{{ date_to }}">
+    <button type="submit">筛选</button>
+    <a href="/admin/logs" style="font-size:13px;">重置</a>
+  </form>
+
+  <table>
+    <tr><th>时间</th><th>操作</th><th>路径</th><th>IP</th><th>状态/耗时</th><th>详情</th></tr>
     {% for log in logs %}
     <tr>
       <td>{{ log.timestamp }}</td>
       <td>{{ log.action }}</td>
-      <td>{{ log.get("path", "") }}</td>
-      <td>{{ log.ip }}</td>
-      <td>{{ log.get("key", "") }}</td>
-      <td>{{ log }}</td>
+      <td>{{ log.get('path', '') }}</td>
+      <td>{{ log.get('ip', '') }}</td>
+      <td>{{ log.get('status', log.get('duration_ms', '')) }}</td>
+      <td class="log-detail" title="{{ log }}">{{ log }}</td>
     </tr>
     {% endfor %}
+    {% if logs|length == 0 %}
+    <tr><td colspan="6" style="text-align:center;color:#999;">无匹配日志</td></tr>
+    {% endif %}
   </table>
-  <div>
-    {% if page > 1 %}<a href="?page={{ page - 1 }}">上一页</a>{% endif %}
-    第 {{ page }} / {{ total_pages }} 页
-    {% if page < total_pages %}<a href="?page={{ page + 1 }}">下一页</a>{% endif %}
+  <div class="pagination">
+    {% if page > 1 %}
+    <a href="?page={{ page - 1 }}&action={{ action }}&path={{ path_filter }}&ip={{ ip_filter }}&keyword={{ keyword }}&date_from={{ date_from }}&date_to={{ date_to }}">上一页</a>
+    {% endif %}
+    第 {{ page }} / {{ total_pages }} 页 ({{ total_logs }} 条)
+    {% if page < total_pages %}
+    <a href="?page={{ page + 1 }}&action={{ action }}&path={{ path_filter }}&ip={{ ip_filter }}&keyword={{ keyword }}&date_from={{ date_from }}&date_to={{ date_to }}">下一页</a>
+    {% endif %}
   </div>
 </body>
 </html>

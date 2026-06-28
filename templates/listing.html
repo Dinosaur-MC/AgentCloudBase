@@ -1,18 +1,51 @@
 <!DOCTYPE html>
 <html>
-<head><title>Index of /{{ path }}</title></head>
+<head><title>Index of /{{ path }}</title>
+<style>
+  body { font-family: sans-serif; margin: 20px; }
+  .actions { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 8px; }
+  .actions form { display: inline; margin-right: 10px; }
+  .actions input, .actions button { padding: 4px 8px; }
+  hr { border: none; border-top: 1px solid #ddd; }
+</style></head>
 <body>
   <p><strong>服务内容:</strong> 目录列表 - {{ share_name }} - /{{ path }}</p>
+
+  {% if can_write %}
+  <div class="actions">
+    <strong>上传:</strong>
+    <form method="post" action="/s/{{ path }}?key={{ key }}" enctype="multipart/form-data" style="display:inline">
+      <input type="file" name="file" required>
+      <button type="submit">上传</button>
+    </form>
+    <form method="get" action="/s/{{ path }}" style="display:inline">
+      <input name="key" type="hidden" value="{{ key }}">
+      <input name="upload_url" placeholder="从 URL 拉取" size="40">
+      <button type="submit">拉取</button>
+    </form>
+  </div>
+  {% endif %}
+
   <hr>
   <ul>
   {% for entry in entries %}
     <li>
       [{{ entry.type }}] <a href="/s/{{ path.rstrip('/') }}/{{ entry.name }}?key={{ key }}">{{ entry.name }}</a>
       {% if entry.type == "file" %} ({{ entry.size }} bytes, {{ entry.modified }}){% endif %}
+      {% if can_delete %}
+        <a href="/s/{{ path.rstrip('/') }}/{{ entry.name }}?key={{ key }}&delete=1" onclick="return confirm('确认删除 {{ entry.name }}？')">[删除]</a>
+      {% endif %}
+      {% if can_rename %}
+        <form method="get" action="/s/{{ path.rstrip('/') }}/{{ entry.name }}" style="display:inline">
+          <input name="key" type="hidden" value="{{ key }}">
+          <input name="rename_to" placeholder="新名称" size="12" required>
+          <button type="submit">重命名</button>
+        </form>
+      {% endif %}
     </li>
   {% endfor %}
   </ul>
   <hr>
-  <small>统计信息: {{ entries|length }} 个项目 | <a href="/help?level=basic">帮助</a></small>
+  <small>{{ entries|length }} 个项目 | <a href="/help?level=basic">帮助</a></small>
 </body>
 </html>
