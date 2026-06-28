@@ -75,8 +75,8 @@ class LogFilter(BaseModel):
     page: int = 1
     per_page: int = 50
     action: Optional[str] = None
-    path: Optional[str] = Field(None, alias="path_filter")
-    ip: Optional[str] = Field(None, alias="ip_filter")
+    path_filter: Optional[str] = Field(None, alias="path")
+    ip_filter: Optional[str] = Field(None, alias="ip")
     keyword: Optional[str] = None
     date_from: Optional[str] = None
     date_to: Optional[str] = None
