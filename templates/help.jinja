@@ -1,106 +1,167 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head><title>帮助</title>
+<head><title>AI Web FTP — Agent Skill Reference</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{--primary:#2563eb;--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b}
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding:24px}
-  .container{max-width:800px;margin:0 auto}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:24px 28px}
-  h2{font-size:20px;font-weight:600;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
-  h3{font-size:15px;font-weight:600;margin-top:24px;margin-bottom:8px;color:var(--primary)}
+  .container{max-width:860px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:28px 32px}
+  h2{font-size:20px;font-weight:600;margin-bottom:4px}
+  .subtitle{font-size:13px;color:var(--muted);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+  h3{font-size:15px;font-weight:600;margin-top:28px;margin-bottom:10px;color:var(--primary);padding-bottom:4px;border-bottom:1px solid #f0f0f0}
+  h4{font-size:13px;font-weight:600;margin-top:18px;margin-bottom:6px}
   p{font-size:14px;line-height:1.7;margin-bottom:8px}
   code{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:13px}
   pre{background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:14px;overflow-x:auto;font-size:13px;line-height:1.6;margin:8px 0 16px}
   table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0 16px}
   th,td{border:1px solid var(--border);padding:7px 10px;text-align:left}
   th{background:#f8fafc;font-weight:600}
-  ul{margin:8px 0 16px;padding-left:20px}
+  ul,ol{margin:6px 0 14px;padding-left:20px}
   li{font-size:14px;line-height:1.8}
-  .nl{margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
-  .nl a{color:var(--primary);text-decoration:none;font-size:14px}
+  .tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600}
+  .tag-get{background:#dbeafe;color:#1d4ed8}
+  .tag-put{background:#fef3c7;color:#b45309}
+  .tag-post{background:#bbf7d0;color:#15803d}
+  .tag-del{background:#fca5a5;color:#b91c1c}
+  .nl{margin-top:24px;padding-top:16px;border-top:1px solid var(--border)}
+  .nl a{color:var(--primary);text-decoration:none;font-size:13px}
   .nl a:hover{text-decoration:underline}
 </style></head>
 <body>
   <div class="container">
     <div class="card">
-    {% if level=="basic" %}
-      <h2>基础使用说明</h2>
-      <p><code>http://host:8000/s/虚拟路径?key=你的密钥</code></p>
-      <h3>查看参数</h3>
+      <h2>AI Web FTP &mdash; Agent Skill Reference</h2>
+      <p class="subtitle">HTTP-based file service for LLM agents. Full CRUD via GET-only queries.</p>
+
+      <h3>Overview</h3>
+      <p>AI Web FTP exposes remote file operations as simple HTTP requests. Agents limited to <strong>GET-only</strong> (no headers, no body) can still create, read, update, and delete files using query parameters.</p>
+
+      <h3>When to Use</h3>
       <ul>
-        <li><code>&raw=1</code> 纯文本原始内容</li>
-        <li><code>&download=1</code> 下载文件</li>
-        <li><code>&json=1</code> JSON 输出</li>
+        <li>Your agent needs to <strong>read</strong> files or list directories</li>
+        <li>Your agent needs to <strong>write/upload</strong> files</li>
+        <li>Your agent needs to <strong>delete</strong> or <strong>rename</strong> files remotely</li>
+        <li>Your agent is <strong>limited to GET requests</strong> only</li>
+        <li>Your agent needs to <strong>check permissions</strong> before acting</li>
       </ul>
-      <h3>写操作（需权限）</h3>
-      <ul>
-        <li><code>&mkdir=1</code> 创建目录</li>
-        <li><code>&upload_url=https://...</code> 从 URL 拉取</li>
-        <li><code>&content=文本</code> 上传文本（64KB 上限）</li>
-        <li><code>&delete=1</code> 删除</li>
-        <li><code>&rename_to=新名称</code> 重命名</li>
-        <li><code>&move_to=/目标</code> 移动</li>
-      </ul>
-      <h3>HTTP 方法</h3>
-      <ul>
-        <li><code>PUT /s/{path}?key=xxx</code> 上传（Body 原始内容）</li>
-        <li><code>POST /s/{path}?key=xxx</code> 上传（multipart）</li>
-        <li><code>DELETE /s/{path}?key=xxx</code> 删除</li>
-      </ul>
-      <h3>权限查询</h3>
-      <ul>
-        <li><code>/perm/{path}?key=xxx</code> 查看当前密钥的权限</li>
-      </ul>
-      <div class="nl"><a href="/help?level=full">完整说明</a></div>
-    {% else %}
-      <h2>完整使用说明</h2>
-      <p>AI Agent FTP 服务。所有写操作经过 SSRF 防护、路径穿越检测和速率限制。</p>
-      <h3>端点</h3>
+      <p style="color:var(--muted);font-size:13px;"><em>Do NOT use for:</em> real-time sync, WebDAV, or multi-user auth beyond a shared access key.</p>
+
+      <h3>Core Pattern</h3>
+      <p>All requests target <code>/s/{path}?key=xxx</code>. The <code>path</code> maps to a virtual directory on the server.</p>
+      <pre>GET  /s/{path}?key=xxx                # Read file or list directory
+GET  /s/{path}?key=xxx&mkdir=1        # Create directory
+GET  /s/{path}?key=xxx&upload_url=URL # Upload from URL
+GET  /s/{path}?key=xxx&content=...    # Upload text content
+GET  /s/{path}?key=xxx&delete=1       # Delete file or empty dir
+GET  /s/{path}?key=xxx&rename_to=NEW  # Rename
+GET  /s/{path}?key=xxx&move_to=/DEST  # Move</pre>
+      <p>Agents supporting other HTTP methods:</p>
+      <pre>PUT   /s/{path}?key=xxx               # Upload raw body as file
+POST  /s/{path}?key=xxx               # Upload multipart file
+POST  /s/{path}?key=xxx&mkdir=1       # Create directory
+DELETE /s/{path}?key=xxx              # Delete file or empty dir</pre>
+
+      {% if level!="basic" %}
+      <h3>Quick Reference</h3>
+
+      <h4>Permissions</h4>
+      <p>Query your access level:</p>
+      <pre>GET /perm/{path}?key=xxx</pre>
       <table>
-        <tr><th>方法</th><th>路径</th><th>说明</th><th>权限</th></tr>
-        <tr><td>GET</td><td>/s/{path}?key=&lt;key&gt;</td><td>查看文件或目录</td><td>read/list</td></tr>
-        <tr><td>GET</td><td>?mkdir=1</td><td>创建目录</td><td>write</td></tr>
-        <tr><td>GET</td><td>?upload_url=URL</td><td>从 URL 拉取</td><td>write</td></tr>
-        <tr><td>GET</td><td>?content=数据</td><td>上传文本</td><td>write</td></tr>
-        <tr><td>GET</td><td>?delete=1</td><td>删除</td><td>delete</td></tr>
-        <tr><td>GET</td><td>?rename_to=新名</td><td>重命名</td><td>rename</td></tr>
-        <tr><td>GET</td><td>?move_to=/目标</td><td>移动</td><td>rename</td></tr>
-        <tr><td>PUT</td><td>/s/{path}?key=&lt;key&gt;</td><td>上传（Body 原始内容）</td><td>write</td></tr>
-        <tr><td>POST</td><td>/s/{path}?key=&lt;key&gt;</td><td>上传（multipart）</td><td>write</td></tr>
-        <tr><td>DELETE</td><td>/s/{path}?key=&lt;key&gt;</td><td>删除</td><td>delete</td></tr>
-        <tr><td>GET</td><td>/perm/{path}?key=&lt;key&gt;</td><td>查询权限</td><td>—</td></tr>
+        <tr><th>Permission</th><th>Operation</th><th>Effect</th></tr>
+        <tr><td><code>list</code></td><td>GET directory</td><td>Returns file listing</td></tr>
+        <tr><td><code>read</code></td><td>GET file</td><td>Returns content or download</td></tr>
+        <tr><td><code>write</code></td><td>POST/PUT upload, mkdir</td><td>Creates files and directories</td></tr>
+        <tr><td><code>delete</code></td><td>GET/DELETE &amp; delete=1</td><td>Removes files or empty dirs</td></tr>
+        <tr><td><code>rename</code></td><td>GET &amp; rename_to/move_to</td><td>Renames or moves items</td></tr>
       </table>
-      <h3>通用参数</h3>
+
+      <h4>Common Parameters</h4>
+      <table>
+        <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+        <tr><td><code>key</code></td><td>string</td><td>Access key (required)</td></tr>
+        <tr><td><code>json</code></td><td>0/1</td><td>Return JSON instead of HTML</td></tr>
+        <tr><td><code>raw</code></td><td>0/1</td><td>Raw file content as text</td></tr>
+        <tr><td><code>download</code></td><td>0/1</td><td>Force file download</td></tr>
+        <tr><td><code>help</code></td><td>string</td><td>Attach docs: basic, full, md</td></tr>
+      </table>
+
+      <h4>Security Constraints</h4>
+      <table>
+        <tr><th>Constraint</th><th>Limit</th></tr>
+        <tr><td>Max upload size</td><td>500 MB</td></tr>
+        <tr><td>content= param max</td><td>64 KB</td></tr>
+        <tr><td>upload_url protocol</td><td>HTTPS only</td></tr>
+        <tr><td>Destination</td><td>Public internet only (no private IPs)</td></tr>
+        <tr><td>Write rate limit</td><td>60 ops/minute</td></tr>
+        <tr><td>Path traversal</td><td>Blocked (realpath + normcase)</td></tr>
+      </table>
+
+      <h3>Usage Patterns</h3>
+
+      <h4>1. Read a file (GET-only agent)</h4>
+      <pre>GET /s/data/readme.txt?key=abc123</pre>
+      <p>Returns HTML with preview. Add <code>&json=1</code>:</p>
+      <pre>GET /s/data/readme.txt?key=abc123&amp;json=1
+&rarr; {"type":"file","filename":"readme.txt","size":1024,...}</pre>
+
+      <h4>2. Upload from URL (GET-only)</h4>
+      <pre>GET /s/data/uploads?key=abc123&amp;upload_url=https://example.com/file.zip</pre>
+
+      <h4>3. Upload text content (GET-only)</h4>
+      <pre>GET /s/data/notes/hello.txt?key=abc123&amp;content=Hello+World</pre>
+
+      <h4>4. Upload binary (agent with PUT)</h4>
+      <pre>PUT /s/data/image.jpg?key=abc123
+Content-Type: application/octet-stream
+
+&lt;binary data&gt;</pre>
+
+      <h4>5. Create dir + upload</h4>
+      <pre>GET /s/data/newproject?key=abc123&amp;mkdir=1
+GET /s/data/newproject/main.py?key=abc123&amp;content=print("hello")</pre>
+
+      <h3>Admin Endpoints</h3>
+      <table>
+        <tr><th>Endpoint</th><th>Description</th><th>Auth</th></tr>
+        <tr><td><code>GET /admin</code></td><td>Dashboard</td><td>Cookie</td></tr>
+        <tr><td><code>POST /admin/login</code></td><td>Login</td><td>Form</td></tr>
+        <tr><td><code>GET /admin/stats</code></td><td>Statistics (JSON)</td><td>Cookie</td></tr>
+        <tr><td><code>GET /admin/logs</code></td><td>Filterable logs</td><td>Cookie</td></tr>
+        <tr><td><code>GET /health</code></td><td>Health check</td><td>None</td></tr>
+      </table>
+
+      <h3>Error Handling</h3>
+      <table>
+        <tr><th>Code</th><th>Meaning</th></tr>
+        <tr><td>400</td><td>Bad request (invalid params, filename)</td></tr>
+        <tr><td>403</td><td>Access denied (wrong key, no permission)</td></tr>
+        <tr><td>404</td><td>Share or path not found</td></tr>
+        <tr><td>409</td><td>Conflict (exists, dir not empty)</td></tr>
+        <tr><td>413</td><td>Payload too large</td></tr>
+        <tr><td>429</td><td>Rate limited</td></tr>
+        <tr><td>507</td><td>Insufficient storage</td></tr>
+      </table>
+      <p>With <code>?json=1</code>: <code>{"success":false,"error":"...","code":N}</code></p>
+
+      <h3>Common Mistakes</h3>
       <ul>
-        <li><code>&json=1</code> JSON 输出</li>
-        <li><code>&raw=1</code> 原始内容</li>
-        <li><code>&download=1</code> 下载</li>
+        <li><strong>Missing trailing slash</strong> &mdash; <code>/s/test?key=abc</code> and <code>/s/test/?key=abc</code> both work</li>
+        <li><strong>Cross-share move</strong> &mdash; Moving files between different shares is rejected with 403</li>
+        <li><strong>Delete non-empty dir</strong> &mdash; Must delete contents first (returns 409)</li>
+        <li><strong>Rename over existing</strong> &mdash; Fails with 409 if target already exists</li>
       </ul>
-      <h3>安全限制</h3>
-      <ul>
-        <li>上传最大 500MB | content= 最大 64KB</li>
-        <li>upload_url 仅 HTTPS，拦截内网（SSRF 防护）</li>
-        <li>写操作 60 次/分钟（速率限制）</li>
-      </ul>
-      <h3>受限 Agent 示例（仅 GET）</h3>
-      <pre>mkdir:  GET /s/data?key=abc&mkdir=1
-upload:  GET /s/data?key=abc&upload_url=https://example.com/file.zip
-content: GET /s/data/note.txt?key=abc&content=Hello+World
-delete:  GET /s/data/old.txt?key=abc&delete=1
-rename:  GET /s/data/old.txt?key=abc&rename_to=new.txt
-json:    GET /s/data?key=abc&json=1
-perm:   GET /perm/data?key=abc</pre>
-      <h3>管理</h3>
-      <ul>
-        <li><a href="/admin">/admin</a> 管理界面</li>
-        <li><a href="/admin/stats">/admin/stats</a> 统计</li>
-        <li><a href="/health">/health</a> 健康检查</li>
-        <li><a href="/perm/test?key=xxx">/perm/{path}</a> 权限查询</li>
-      </ul>
-      <div class="nl"><a href="/help?level=basic">基础说明</a></div>
-    {% endif %}
+      {% endif %}
+
+      <div class="nl">
+        {% if level=="basic" %}
+        <a href="/help?level=full">Full Reference &rarr;</a>
+        {% else %}
+        <a href="/help?level=basic">&larr; Basic Usage</a>
+        {% endif %}
+      </div>
     </div>
   </div>
 </body>
