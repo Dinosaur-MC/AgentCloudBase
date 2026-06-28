@@ -20,13 +20,13 @@ import uvicorn
 from config import settings
 from utils import (
     ShareConfig, load_config, save_config,
-    write_log, _iter_all_logs, _list_log_shards, count_resource_views,
+    write_log, _iter_all_logs, _list_log_shards, count_resource_views, compute_stats,
     find_share_by_vpath, validate_access_key, get_absolute_path,
     require_write_permission, require_delete_permission, require_rename_permission,
     error_response, success_response,
     handle_mkdir, handle_upload_url, handle_content_upload,
     handle_delete, handle_rename, handle_put_upload, handle_multipart_upload,
-    create_jwt_token, get_admin_from_cookie,
+    create_jwt_token, get_admin_from_cookie, mask_key,
 )
 
 # ------------------- FastAPI 应用 -------------------
@@ -43,17 +43,6 @@ app.add_middleware(
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-
-
-# ------------------- Jinja2 自定义过滤器 -------------------
-def format_size(value: int) -> str:
-    for unit in ("B", "KB", "MB", "GB"):
-        if abs(value) < 1024:
-            return f"{value:.1f}{unit}" if isinstance(value, float) else f"{value}{unit}"
-        value /= 1024
-    return f"{value:.1f}TB"
-
-templates.env.filters["format_size"] = format_size
 
 
 # ------------------- 请求日志中间件 -------------------
@@ -89,22 +78,7 @@ async def admin_page(request: Request):
     if not admin:
         return templates.TemplateResponse(request, "admin_login.html", {"error": None})
     configs = load_config()
-    shards = _list_log_shards()
-    total_logs = 0
-    total_size = 0
-    for shard in shards:
-        total_size += shard.stat().st_size
-        try:
-            with open(shard, "r", encoding="utf-8") as f:
-                total_logs += sum(1 for _ in f)
-        except FileNotFoundError:
-            continue
-    stats = {
-        "shares_count": len(configs),
-        "log_entries": total_logs,
-        "log_shards": len(shards),
-        "log_size_mb": round(total_size / (1024 * 1024), 2),
-    }
+    stats = compute_stats()
     return templates.TemplateResponse(
         request, "admin_dashboard.html", {"shares": configs, "stats": stats}
     )
@@ -189,24 +163,7 @@ async def admin_stats(request: Request):
     admin = get_admin_from_cookie(request)
     if not admin:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    configs = load_config()
-    shards = _list_log_shards()
-    total_logs = 0
-    total_size = 0
-    for shard in shards:
-        total_size += shard.stat().st_size
-        try:
-            with open(shard, "r", encoding="utf-8") as f:
-                total_logs += sum(1 for _ in f)
-        except FileNotFoundError:
-            continue
-    return {
-        "shares_count": len(configs),
-        "log_entries": total_logs,
-        "log_shards": len(shards),
-        "log_size_bytes": total_size,
-        "log_size_mb": round(total_size / (1024 * 1024), 2),
-    }
+    return compute_stats()
 
 
 @app.get("/admin/logs", response_class=HTMLResponse)
@@ -282,7 +239,7 @@ async def serve_content(
         raise HTTPException(status_code=404, detail="No share matched")
     if not validate_access_key(share, key):
         write_log({"action": "access_denied", "path": path, "ip": request.client.host,
-                    "key": key[:4] + "***" if key else "None"})
+                    "key": mask_key(key)})
         if json_mode:
             return JSONResponse(status_code=403, content={"success": False, "error": "Invalid access key", "code": 403})
         raise HTTPException(status_code=403, detail="Invalid access key")
@@ -323,11 +280,12 @@ async def serve_content(
         for entry in sorted(abs_path.iterdir()):
             if entry.name.startswith("."):
                 continue
+            st = entry.stat()
             entry_type = "dir" if entry.is_dir() else "file"
             entries.append({
                 "name": entry.name, "type": entry_type,
-                "size": entry.stat().st_size if entry_type == "file" else 0,
-                "modified": datetime.fromtimestamp(entry.stat().st_mtime).isoformat(),
+                "size": st.st_size if entry_type == "file" else 0,
+                "modified": datetime.fromtimestamp(st.st_mtime).isoformat(),
             })
         log_entry["operation"] = "list_dir"
         write_log(log_entry)
@@ -398,7 +356,7 @@ async def serve_content_put(
         return error_response("No share matched", 404, json_mode)
     if not validate_access_key(share, key):
         write_log({"action": "access_denied", "path": path, "ip": request.client.host,
-                    "key": key[:4] + "***" if key else "None"})
+                    "key": mask_key(key)})
         return error_response("Invalid access key", 403, json_mode)
     abs_path = get_absolute_path(share, "/" + path)
     return await handle_put_upload(request, share, abs_path, path, key, json_mode, filename)
@@ -419,7 +377,7 @@ async def serve_content_post(
             return error_response("No share matched", 404, json_mode)
         if not validate_access_key(share, key):
             write_log({"action": "access_denied", "path": path, "ip": request.client.host,
-                        "key": key[:4] + "***" if key else "None"})
+                        "key": mask_key(key)})
             return error_response("Invalid access key", 403, json_mode)
         abs_path = get_absolute_path(share, "/" + path)
         return await handle_multipart_upload(request, share, abs_path, path, key, file, json_mode)

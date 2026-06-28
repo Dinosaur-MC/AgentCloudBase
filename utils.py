@@ -69,16 +69,25 @@ def _cleanup_old_logs():
             shard.unlink(missing_ok=True)
 
 
+_cached_shard: Path | None = None
+
+
 def _current_shard_path() -> Path:
+    global _cached_shard
+    if _cached_shard is not None and _cached_shard.exists() and _cached_shard.stat().st_size < settings.log_max_size:
+        return _cached_shard
     _ensure_log_dir()
     shards = _list_log_shards()
     if not shards:
-        return Path(settings.log_dir) / f"{settings.log_filename_prefix}{settings.log_file_ext}"
-    latest = shards[-1]
-    if latest.stat().st_size < settings.log_max_size:
-        return latest
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return Path(settings.log_dir) / f"{settings.log_filename_prefix}_{ts}{settings.log_file_ext}"
+        _cached_shard = Path(settings.log_dir) / f"{settings.log_filename_prefix}{settings.log_file_ext}"
+    else:
+        latest = shards[-1]
+        if latest.stat().st_size < settings.log_max_size:
+            _cached_shard = latest
+        else:
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            _cached_shard = Path(settings.log_dir) / f"{settings.log_filename_prefix}_{ts}{settings.log_file_ext}"
+    return _cached_shard
 
 
 _counter_cleanup = 0
@@ -118,24 +127,30 @@ def read_logs(limit: int = 100, offset: int = 0) -> List[dict]:
     return list(reversed(logs))[offset: offset + limit]
 
 
-def count_resource_views(path: str) -> int:
-    count = 0
-    for shard in _list_log_shards():
+def compute_stats() -> dict:
+    configs = load_config()
+    shards = _list_log_shards()
+    total_logs = total_size = 0
+    for shard in shards:
+        total_size += shard.stat().st_size
         try:
             with open(shard, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        entry = json.loads(line)
-                        if entry.get("action") == "access" and entry.get("path") == path.lstrip("/"):
-                            count += 1
-                    except json.JSONDecodeError:
-                        continue
+                total_logs += sum(1 for _ in f)
         except FileNotFoundError:
             continue
-    return count
+    return {
+        "shares_count": len(configs),
+        "log_entries": total_logs,
+        "log_shards": len(shards),
+        "log_size_bytes": total_size,
+        "log_size_mb": round(total_size / (1024 * 1024), 2),
+    }
+
+
+def count_resource_views(path: str) -> int:
+    target = path.lstrip("/")
+    return sum(1 for entry in _iter_all_logs()
+               if entry.get("action") == "access" and entry.get("path") == target)
 
 
 # ==================== 速率限制器 ====================
@@ -192,6 +207,10 @@ def check_disk_space(path: str, min_free: int = None):
     usage = shutil.disk_usage(os.path.dirname(path) or ".")
     if usage.free < min_free:
         raise HTTPException(status_code=507, detail="Insufficient storage space")
+
+
+def mask_key(key: str) -> str:
+    return (mask_key(key)) if key else "None"
 
 
 # ==================== JSON 响应工具 ====================
@@ -269,24 +288,24 @@ def check_share_permission(share: ShareConfig, perm: str) -> bool:
 
 def require_write_permission(share: ShareConfig, path: str, ip: str, key: str, json_mode: bool = False):
     if not check_share_permission(share, "write"):
-        write_log({"action": "upload_denied", "path": path, "ip": ip, "key": key[:4] + "***", "reason": "permission_denied"})
+        write_log({"action": "upload_denied", "path": path, "ip": ip, "key": mask_key(key), "reason": "permission_denied"})
         return error_response("Write permission denied", 403, json_mode)
     if not write_rate_limiter.check(ip):
-        write_log({"action": "upload_denied", "path": path, "ip": ip, "key": key[:4] + "***", "reason": "rate_limited"})
+        write_log({"action": "upload_denied", "path": path, "ip": ip, "key": mask_key(key), "reason": "rate_limited"})
         return error_response("Rate limit exceeded. Try again later.", 429, json_mode)
     return None
 
 
 def require_delete_permission(share: ShareConfig, path: str, ip: str, key: str, json_mode: bool = False):
     if not check_share_permission(share, "delete"):
-        write_log({"action": "delete_denied", "path": path, "ip": ip, "key": key[:4] + "***", "reason": "permission_denied"})
+        write_log({"action": "delete_denied", "path": path, "ip": ip, "key": mask_key(key), "reason": "permission_denied"})
         return error_response("Delete permission denied", 403, json_mode)
     return None
 
 
 def require_rename_permission(share: ShareConfig, path: str, ip: str, key: str, json_mode: bool = False):
     if not check_share_permission(share, "rename"):
-        write_log({"action": "rename_denied", "path": path, "ip": ip, "key": key[:4] + "***", "reason": "permission_denied"})
+        write_log({"action": "rename_denied", "path": path, "ip": ip, "key": mask_key(key), "reason": "permission_denied"})
         return error_response("Rename permission denied", 403, json_mode)
     return None
 
@@ -301,7 +320,7 @@ async def handle_mkdir(share, abs_path, path, ip, key, json_mode=False):
         return error_response("Path already exists", 409, json_mode)
     try:
         abs_path.mkdir(parents=True, exist_ok=True)
-        write_log({"action": "dir_created", "path": path, "ip": ip, "key": key[:4] + "***"})
+        write_log({"action": "dir_created", "path": path, "ip": ip, "key": mask_key(key)})
         return success_response(f"Directory created: {path}", json_mode=json_mode)
     except (OSError, PermissionError) as e:
         return error_response(str(e), 500, json_mode)
@@ -336,7 +355,7 @@ async def handle_upload_url(share, abs_path, url, filename, path, ip, key, json_
                         f.write(chunk)
         os.rename(temp_path, final_path)
         rel = str(final_path.relative_to(Path(share.real_path).resolve()))
-        write_log({"action": "file_uploaded", "path": rel, "ip": ip, "key": key[:4] + "***", "source": "upload_url", "size": size})
+        write_log({"action": "file_uploaded", "path": rel, "ip": ip, "key": mask_key(key), "source": "upload_url", "size": size})
         return success_response(f"File uploaded: {final_path.name}", {"name": final_path.name, "size": size}, json_mode)
     except httpx.RequestError as e:
         temp_path.unlink(missing_ok=True)
@@ -347,13 +366,13 @@ async def handle_content_upload(share, abs_path, content_data, filename, path, i
     err = require_write_permission(share, path, ip, key, json_mode)
     if err:
         return err
-    if len(content_data.encode("utf-8")) > settings.max_content_param_size:
-        return error_response("Content too large (max 64KB)", 413, json_mode)
     try:
-        content_data.encode("utf-8")
+        encoded = content_data.encode("utf-8")
     except UnicodeEncodeError:
         return error_response("Invalid UTF-8 content", 400, json_mode)
-    if "\0" in content_data:
+    if len(encoded) > settings.max_content_param_size:
+        return error_response("Content too large (max 64KB)", 413, json_mode)
+    if "\0" in encoded:
         return error_response("Binary content not allowed via content parameter", 400, json_mode)
     if not filename:
         filename = os.path.basename(path.rstrip("/")) or "untitled.txt"
@@ -364,9 +383,9 @@ async def handle_content_upload(share, abs_path, content_data, filename, path, i
     temp_path = final_path.with_suffix(final_path.suffix + ".tmp")
     temp_path.write_text(content_data, encoding="utf-8")
     os.rename(temp_path, final_path)
-    size = len(content_data.encode("utf-8"))
+    size = len(encoded)
     rel = str(final_path.relative_to(Path(share.real_path).resolve()))
-    write_log({"action": "file_uploaded", "path": rel, "ip": ip, "key": key[:4] + "***", "source": "content_param", "size": size})
+    write_log({"action": "file_uploaded", "path": rel, "ip": ip, "key": mask_key(key), "source": "content_param", "size": size})
     return success_response(f"File uploaded: {final_path.name}", {"name": final_path.name, "size": size}, json_mode)
 
 
@@ -391,7 +410,7 @@ async def handle_delete(share, abs_path, path, ip, key, json_mode=False):
         else:
             abs_path.unlink()
         entry_type = "directory" if abs_path.is_dir() else "file"
-        write_log({"action": "file_deleted", "path": path, "type": entry_type, "ip": ip, "key": key[:4] + "***"})
+        write_log({"action": "file_deleted", "path": path, "type": entry_type, "ip": ip, "key": mask_key(key)})
         return success_response(f"Deleted: {path}", json_mode=json_mode)
     except (OSError, PermissionError) as e:
         return error_response(str(e), 500, json_mode)
@@ -423,7 +442,7 @@ async def handle_rename(share, abs_path, new_name, path, ip, key, move_target=No
     try:
         abs_path.rename(final_path)
         rel = str(final_path.relative_to(Path(share.real_path).resolve()))
-        write_log({"action": "file_renamed", "path": path, "dest": rel, "ip": ip, "key": key[:4] + "***"})
+        write_log({"action": "file_renamed", "path": path, "dest": rel, "ip": ip, "key": mask_key(key)})
         return success_response(f"Renamed to: {final_path.name}", {"from": path, "to": rel}, json_mode)
     except (OSError, PermissionError) as e:
         return error_response(str(e), 500, json_mode)
@@ -447,7 +466,7 @@ async def handle_put_upload(request, share, abs_path, path, key, json_mode, file
     with open(temp_path, "wb") as f:
         f.write(body)
     os.rename(temp_path, abs_path)
-    write_log({"action": "file_uploaded", "path": path, "ip": request.client.host, "key": key[:4] + "***", "source": "put", "size": len(body)})
+    write_log({"action": "file_uploaded", "path": path, "ip": request.client.host, "key": mask_key(key), "source": "put", "size": len(body)})
     return success_response(f"File uploaded: {abs_path.name}", {"name": abs_path.name, "size": len(body)}, json_mode)
 
 
@@ -471,7 +490,7 @@ async def handle_multipart_upload(request, share, abs_path, path, key, file, jso
                 return error_response("File too large (max 500MB)", 413, json_mode)
             f.write(chunk)
     os.rename(temp_path, final_path)
-    write_log({"action": "file_uploaded", "path": path, "ip": request.client.host, "key": key[:4] + "***", "source": "multipart", "size": size})
+    write_log({"action": "file_uploaded", "path": path, "ip": request.client.host, "key": mask_key(key), "source": "multipart", "size": size})
     return success_response(f"File uploaded: {final_path.name}", {"name": final_path.name, "size": size}, json_mode)
 
 
