@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-HELP_MD_PATH = Path(__file__).parent / "HELP.md"
+HELP_MD_PATH = Path(__file__).parent / "SKILL.md"
 HELP_MD = HELP_MD_PATH.read_text(encoding="utf-8")
 
 
