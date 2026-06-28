@@ -1,51 +1,92 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head><title>Index of /{{ path }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  body { font-family: sans-serif; margin: 20px; }
-  .actions { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 8px; }
-  .actions form { display: inline; margin-right: 10px; }
-  .actions input, .actions button { padding: 4px 8px; }
-  hr { border: none; border-top: 1px solid #ddd; }
+  :root { --primary: #2563eb; --bg: #f8fafc; --card: #fff; --border: #e2e8f0; --text: #1e293b; --muted: #64748b; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 24px; }
+  .container { max-width: 800px; margin: 0 auto; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); background: #f8fafc; }
+  .card-header h2 { font-size: 16px; font-weight: 600; }
+  .card-header .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .toolbar { padding: 12px 20px; border-bottom: 1px solid var(--border); background: #fafbfc; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .toolbar form { display: inline-flex; align-items: center; gap: 6px; }
+  .toolbar input { padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; outline: none; }
+  .toolbar input:focus { border-color: var(--primary); }
+  .toolbar button { padding: 5px 14px; background: var(--primary); color: #fff; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .toolbar button:hover { background: #1d4ed8; }
+  .file-list { list-style: none; }
+  .file-list li { padding: 10px 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
+  .file-list li:last-child { border-bottom: none; }
+  .file-list li:hover { background: #f8fafc; }
+  .file-list .name { display: flex; align-items: center; gap: 8px; }
+  .file-list .name a { color: var(--primary); text-decoration: none; font-size: 14px; }
+  .file-list .name a:hover { text-decoration: underline; }
+  .file-list .meta { font-size: 12px; color: var(--muted); }
+  .file-list .actions { display: flex; gap: 6px; align-items: center; }
+  .file-list .actions a, .file-list .actions button { font-size: 12px; color: var(--muted); text-decoration: none; cursor: pointer; background: none; border: none; padding: 2px 6px; }
+  .file-list .actions a:hover, .file-list .actions button:hover { color: var(--primary); }
+  .file-list .actions .del:hover { color: #dc2626; }
+  .rename-form { display: inline-flex; align-items: center; gap: 4px; }
+  .rename-form input { width: 80px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; }
+  .card-footer { padding: 10px 20px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); }
+  .icon-folder { color: #eab308; }
+  .icon-file { color: var(--muted); }
 </style></head>
 <body>
-  <p><strong>服务内容:</strong> 目录列表 - {{ share_name }} - /{{ path }}</p>
-
-  {% if can_write %}
-  <div class="actions">
-    <strong>上传:</strong>
-    <form method="post" action="/s/{{ path }}?key={{ key }}" enctype="multipart/form-data" style="display:inline">
-      <input type="file" name="file" required>
-      <button type="submit">上传</button>
-    </form>
-    <form method="get" action="/s/{{ path }}" style="display:inline">
-      <input name="key" type="hidden" value="{{ key }}">
-      <input name="upload_url" placeholder="从 URL 拉取" size="40">
-      <button type="submit">拉取</button>
-    </form>
-  </div>
-  {% endif %}
-
-  <hr>
-  <ul>
-  {% for entry in entries %}
-    <li>
-      [{{ entry.type }}] <a href="/s/{{ path.rstrip('/') }}/{{ entry.name }}?key={{ key }}">{{ entry.name }}</a>
-      {% if entry.type == "file" %} ({{ entry.size }} bytes, {{ entry.modified }}){% endif %}
-      {% if can_delete %}
-        <a href="/s/{{ path.rstrip('/') }}/{{ entry.name }}?key={{ key }}&delete=1" onclick="return confirm('确认删除 {{ entry.name }}？')">[删除]</a>
-      {% endif %}
-      {% if can_rename %}
-        <form method="get" action="/s/{{ path.rstrip('/') }}/{{ entry.name }}" style="display:inline">
-          <input name="key" type="hidden" value="{{ key }}">
-          <input name="rename_to" placeholder="新名称" size="12" required>
-          <button type="submit">重命名</button>
+  <div class="container">
+    <div class="card">
+      <div class="card-header">
+        <h2>📁 /{{ path }}</h2>
+        <div class="meta">{{ share_name }} · {{ entries|length }} 个项目</div>
+      </div>
+      {% if can_write %}
+      <div class="toolbar">
+        <form method="post" action="/s/{{ path }}?key={{ key }}" enctype="multipart/form-data">
+          <input type="file" name="file" required>
+          <button type="submit">上传</button>
         </form>
+        <form method="get" action="/s/{{ path }}">
+          <input name="key" type="hidden" value="{{ key }}">
+          <input name="upload_url" placeholder="从 URL 拉取" size="28">
+          <button type="submit">拉取</button>
+        </form>
+      </div>
       {% endif %}
-    </li>
-  {% endfor %}
-  </ul>
-  <hr>
-  <small>{{ entries|length }} 个项目 | <a href="/help?level=basic">帮助</a></small>
+      <ul class="file-list">
+      {% for entry in entries %}
+        <li>
+          <div class="name">
+            <span class="{{ 'icon-folder' if entry.type == 'dir' else 'icon-file' }}">{{ '📁' if entry.type == 'dir' else '📄' }}</span>
+            <a href="/s/{{ path.rstrip('/') }}/{{ entry.name }}?key={{ key }}">{{ entry.name }}</a>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="meta">{% if entry.type == "file" %}{{ entry.size }} bytes · {{ entry.modified[:10] }}{% else %}目录{% endif %}</span>
+            <span class="actions">
+              {% if can_delete %}
+              <a href="/s/{{ path.rstrip('/') }}/{{ entry.name }}?key={{ key }}&delete=1" onclick="return confirm('确认删除 {{ entry.name }}？')" class="del">🗑</a>
+              {% endif %}
+              {% if can_rename %}
+              <form class="rename-form" method="get" action="/s/{{ path.rstrip('/') }}/{{ entry.name }}">
+                <input name="key" type="hidden" value="{{ key }}">
+                <input name="rename_to" placeholder="新名称" required>
+                <button type="submit">✏️</button>
+              </form>
+              {% endif %}
+            </span>
+          </div>
+        </li>
+      {% endfor %}
+      {% if entries|length == 0 %}
+        <li style="text-align:center;padding:24px;color:var(--muted);">空目录</li>
+      {% endif %}
+      </ul>
+      <div class="card-footer">
+        <a href="/help?level=basic">帮助</a>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

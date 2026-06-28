@@ -1,12 +1,31 @@
 <!DOCTYPE html>
-<html>
-<head><title>Admin Login</title></head>
+<html lang="zh-CN">
+<head><title>管理员登录 — AI Agent FTP</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --primary: #2563eb; --bg: #f1f5f9; --card: #fff; --border: #e2e8f0; --text: #1e293b; --muted: #64748b; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .login-card { background: var(--card); border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,.08); padding: 40px; width: 360px; max-width: 90vw; }
+  h1 { font-size: 20px; font-weight: 600; text-align: center; margin-bottom: 8px; }
+  .subtitle { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .error { color: #dc2626; font-size: 13px; text-align: center; margin-bottom: 12px; padding: 8px; background: #fef2f2; border-radius: 6px; }
+  label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+  input[type=password] { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; transition: border-color .15s; }
+  input[type=password]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+  button { width: 100%; margin-top: 16px; padding: 10px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
+  button:hover { background: #1d4ed8; }
+</style></head>
 <body>
-  <h2>管理员登录</h2>
-  {% if error %}<p style="color:red">{{ error }}</p>{% endif %}
-  <form method="post" action="/admin/login">
-    <label>管理员密钥: <input type="password" name="key" required></label>
-    <button type="submit">登录</button>
-  </form>
+  <div class="login-card">
+    <h1>管理面板</h1>
+    <p class="subtitle">AI Agent FTP 服务</p>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="post" action="/admin/login">
+      <label for="key">管理员密钥</label>
+      <input type="password" name="key" id="key" placeholder="输入管理员密钥" required autofocus>
+      <button type="submit">登 录</button>
+    </form>
+  </div>
 </body>
 </html>
