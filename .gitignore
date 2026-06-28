@@ -12,3 +12,6 @@ wheels/
 .temp/
 *.log
 logs/
+.claude/
+.superpowers/
+docs/superpowers/*

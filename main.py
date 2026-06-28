@@ -63,7 +63,7 @@ def load_config() -> List[ShareConfig]:
 
 def save_config(configs: List[ShareConfig]):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump([cfg.dict() for cfg in configs], f, indent=2, ensure_ascii=False)
+        json.dump([cfg.model_dump() for cfg in configs], f, indent=2, ensure_ascii=False)
 
 
 # ------------------- 日志分片工具 -------------------
