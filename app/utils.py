@@ -302,8 +302,26 @@ def validate_access_key(share: ShareConfig, key: Optional[str]) -> bool:
             if datetime.now() > exp:
                 return False
         except (ValueError, TypeError):
-            pass  # 格式不对当作无期限
+            pass
     return share.access_key == key
+
+
+def check_access(share: ShareConfig, key: Optional[str]) -> str:
+    """检查访问权限，返回 None 表示通过，否则返回错误消息"""
+    if not key:
+        return "Access key is required"
+    if not share.enabled:
+        return "Share is disabled"
+    if share.access_key_expires:
+        try:
+            exp = datetime.fromisoformat(share.access_key_expires)
+            if datetime.now() > exp:
+                return "Access key has expired"
+        except (ValueError, TypeError):
+            pass
+    if share.access_key != key:
+        return "Invalid access key"
+    return ""
 
 
 def get_absolute_path(share: ShareConfig, request_path: str) -> Path:

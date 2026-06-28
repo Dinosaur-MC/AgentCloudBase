@@ -39,6 +39,7 @@ from app.utils import (
     compute_stats,
     find_share_by_vpath,
     validate_access_key,
+    check_access,
     get_absolute_path,
     error_response,
     handle_mkdir,
@@ -328,21 +329,12 @@ async def serve_content(
                 content={"success": False, "error": "No share matched", "code": 404},
             )
         raise HTTPException(status_code=404, detail="No share matched")
-    if not validate_access_key(share, key):
-        write_log(
-            {
-                "action": "access_denied",
-                "path": path,
-                "ip": request.client.host,
-                "key": mask_key(key),
-            }
-        )
+    err_msg = check_access(share, key)
+    if err_msg:
+        write_log({"action": "access_denied", "path": path, "ip": request.client.host, "key": mask_key(key), "reason": err_msg})
         if json_mode:
-            return JSONResponse(
-                status_code=403,
-                content={"success": False, "error": "Invalid access key", "code": 403},
-            )
-        raise HTTPException(status_code=403, detail="Invalid access key")
+            return JSONResponse(status_code=403, content={"success": False, "error": err_msg, "code": 403})
+        raise HTTPException(status_code=403, detail=err_msg)
     abs_path = get_absolute_path(share, "/" + path)
 
     # 操作分发
@@ -523,16 +515,10 @@ async def serve_content_put(
     share = find_share_by_vpath("/" + path)
     if not share:
         return error_response("No share matched", 404, json_mode)
-    if not validate_access_key(share, key):
-        write_log(
-            {
-                "action": "access_denied",
-                "path": path,
-                "ip": request.client.host,
-                "key": mask_key(key),
-            }
-        )
-        return error_response("Invalid access key", 403, json_mode)
+    err_msg = check_access(share, key)
+    if err_msg:
+        write_log({"action": "access_denied", "path": path, "ip": request.client.host, "key": mask_key(key), "reason": err_msg})
+        return error_response(err_msg, 403, json_mode)
     abs_path = get_absolute_path(share, "/" + path)
     return await handle_put_upload(
         request, share, abs_path, path, key, json_mode, filename
@@ -554,16 +540,10 @@ async def serve_content_post(
         share = find_share_by_vpath("/" + path)
         if not share:
             return error_response("No share matched", 404, json_mode)
-        if not validate_access_key(share, key):
-            write_log(
-                {
-                    "action": "access_denied",
-                    "path": path,
-                    "ip": request.client.host,
-                    "key": mask_key(key),
-                }
-            )
-            return error_response("Invalid access key", 403, json_mode)
+        err_msg = check_access(share, key)
+        if err_msg:
+            write_log({"action": "access_denied", "path": path, "ip": request.client.host, "key": mask_key(key), "reason": err_msg})
+            return error_response(err_msg, 403, json_mode)
         abs_path = get_absolute_path(share, "/" + path)
         return await handle_multipart_upload(
             request, share, abs_path, path, key, file, json_mode, filename
@@ -623,9 +603,10 @@ async def tool_edit(
     share = find_share_by_vpath("/" + path)
     if not share:
         return error_response("No share matched", 404, json_mode)
-    if not validate_access_key(share, key):
-        write_log({"action": "access_denied", "path": path, "ip": request.client.host, "key": mask_key(key)})
-        return error_response("Invalid access key", 403, json_mode)
+    err_msg = check_access(share, key)
+    if err_msg:
+        write_log({"action": "access_denied", "path": path, "ip": request.client.host, "key": mask_key(key), "reason": err_msg})
+        return error_response(err_msg, 403, json_mode)
     abs_path = get_absolute_path(share, "/" + path)
     return await handle_edit(share, abs_path, old_str, new_str, replace_all == 1,
                               path, request.client.host, key, json_mode)
@@ -640,10 +621,9 @@ async def query_permission(path: str, key: str = Query(...)):
         return JSONResponse(
             status_code=404, content={"success": False, "error": "No share matched"}
         )
-    if not validate_access_key(share, key):
-        return JSONResponse(
-            status_code=403, content={"success": False, "error": "Invalid access key"}
-        )
+    err_msg = check_access(share, key)
+    if err_msg:
+        return JSONResponse(status_code=403, content={"success": False, "error": err_msg})
     return {
         "path": "/" + path,
         "share_name": share.name,
