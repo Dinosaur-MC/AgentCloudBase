@@ -23,6 +23,7 @@ from fastapi.responses import (
     PlainTextResponse,
 )
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from jose import JWTError, jwt
 import uvicorn
@@ -233,6 +234,16 @@ def get_admin_from_cookie(request: Request) -> Optional[str]:
 
 # ------------------- FastAPI 应用 -------------------
 app = FastAPI(title="AI Agent FTP Service", version="1.0")
+
+# ------------------- CORS 中间件 -------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
