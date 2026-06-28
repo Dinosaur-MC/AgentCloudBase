@@ -47,6 +47,7 @@ from app.utils import (
     handle_delete,
     handle_rename,
     handle_put_upload,
+    handle_edit,
     handle_multipart_upload,
     create_jwt_token,
     get_admin_from_cookie,
@@ -288,7 +289,7 @@ async def serve_content(
     # 参数互斥检查
     ops = sum([1 for v in (mkdir == 1, bool(upload_url), content is not None, delete == 1, bool(rename_to), bool(move_to)) if v])
     if ops > 1:
-        return error_response("Conflicting parameters: only one operation allowed per request (mkdir/upload_url/content/delete/rename_to/move_to)", 400, json_mode)
+        return error_response("Conflicting parameters: only one operation allowed per request", 400, json_mode)
 
     share = find_share_by_vpath("/" + path)
     if not share:
@@ -575,6 +576,30 @@ async def serve_content_delete(
         rename_to=None,
         move_to=None,
     )
+
+
+# ------------------- 工具集 -------------------
+@app.get("/tool/edit")
+async def tool_edit(
+    request: Request,
+    path: str = Query(...),
+    key: str = Query(...),
+    old_str: str = Query(...),
+    new_str: str = Query(...),
+    replace_all: int = Query(0),
+    json: int = Query(0, alias="json"),
+):
+    """精确字符串替换编辑文本文件"""
+    json_mode = json == 1
+    share = find_share_by_vpath("/" + path)
+    if not share:
+        return error_response("No share matched", 404, json_mode)
+    if not validate_access_key(share, key):
+        write_log({"action": "access_denied", "path": path, "ip": request.client.host, "key": mask_key(key)})
+        return error_response("Invalid access key", 403, json_mode)
+    abs_path = get_absolute_path(share, "/" + path)
+    return await handle_edit(share, abs_path, old_str, new_str, replace_all == 1,
+                              path, request.client.host, key, json_mode)
 
 
 # ------------------- 权限查询 -------------------

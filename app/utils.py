@@ -512,6 +512,35 @@ async def handle_put_upload(request, share, abs_path, path, key, json_mode, file
     return success_response(f"File uploaded: {abs_path.name}", {"name": abs_path.name, "size": len(body)}, json_mode)
 
 
+async def handle_edit(share, abs_path, old_str, new_str, replace_all, path, ip, key, json_mode=False):
+    err = require_write_permission(share, path, ip, key, json_mode)
+    if err:
+        return err
+    if not old_str or new_str is None:
+        return error_response("old_str and new_str are required for edit operation", 400, json_mode)
+    if not abs_path.exists():
+        return error_response("File not found", 404, json_mode)
+    if abs_path.is_dir():
+        return error_response("Cannot edit a directory", 400, json_mode)
+    try:
+        content = abs_path.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, PermissionError):
+        return error_response("File is not a readable text file", 400, json_mode)
+    if old_str not in content:
+        return error_response(f"old_str not found in file", 404, json_mode)
+    if replace_all:
+        count = content.count(old_str)
+        new_content = content.replace(old_str, new_str)
+    else:
+        count = 1
+        new_content = content.replace(old_str, new_str, 1)
+    temp_path = abs_path.with_suffix(abs_path.suffix + ".tmp")
+    temp_path.write_text(new_content, encoding="utf-8")
+    os.rename(temp_path, abs_path)
+    write_log({"action": "file_edited", "path": path, "ip": ip, "key": mask_key(key), "replacements": count})
+    return success_response(f"Replaced {count} occurrence(s)", {"replacements": count, "old_len": len(old_str), "new_len": len(new_str)}, json_mode)
+
+
 async def handle_multipart_upload(request, share, abs_path, path, key, file, json_mode=False, filename=None):
     err = require_write_permission(share, path, request.client.host, key, json_mode)
     if err:

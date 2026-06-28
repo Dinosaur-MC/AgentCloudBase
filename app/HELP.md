@@ -33,6 +33,7 @@ GET /s/{path}?key=xxx&content=...  → Upload text content
 GET /s/{path}?key=xxx&delete=1     → Delete file or empty directory
 GET /s/{path}?key=xxx&rename_to=NEW → Rename
 GET /s/{path}?key=xxx&move_to=/DEST → Move to another directory
+GET /tool/edit?path=...&key=xxx&old_str=...&new_str=... → Edit text file (replace string)
 ```
 
 For agents that support other HTTP methods:
@@ -41,6 +42,12 @@ PUT  /s/{path}?key=xxx             → Upload raw body as file
 POST /s/{path}?key=xxx             → Upload multipart form file
 POST /s/{path}?key=xxx&mkdir=1     → Create directory
 DELETE /s/{path}?key=xxx           → Delete file or empty directory
+```
+
+Specialized tools under `/tool/`:
+```
+GET /tool/edit?path=...&key=xxx&old_str=...&new_str=...    → Edit text file (exact string replacement)
+GET /tool/edit?path=...&key=xxx&old_str=...&new_str=...&replace_all=1  → Replace all occurrences
 ```
 
 ## Quick Reference
@@ -72,6 +79,10 @@ GET /perm/{path}?key=xxx
 | `download` | int (0/1) | Force file download |
 | `help` | string | Attach documentation: basic, full, md |
 | `filename` | string | Override filename for upload (upload_url/content/PUT/POST) |
+| `path` | string | Target file path (used by `/tool/edit`) |
+| `old_str` | string | String to find (used by `/tool/edit`) |
+| `new_str` | string | Replacement string (used by `/tool/edit`) |
+| `replace_all` | int (0/1) | Replace all occurrences (used by `/tool/edit`) |
 
 ### Security Constraints
 
@@ -121,6 +132,17 @@ PUT /s/data/image.jpg?key=abc123
 Content-Type: application/octet-stream
 
 <binary data>
+```
+
+### Pattern 6: Edit text file (precision string replacement)
+
+```
+GET /tool/edit?path=/data/config.json&key=abc123&old_str=debug%3Atrue&new_str=debug%3Afalse
+```
+Replaces the first occurrence of `debug:true` with `debug:false` in `config.json`. Add `&replace_all=1` to replace every occurrence.
+
+```
+GET /tool/edit?path=/data/README.md&key=abc123&old_str=v1.0&new_str=v2.0&replace_all=1
 ```
 
 ### Pattern 5: Create directory + upload file

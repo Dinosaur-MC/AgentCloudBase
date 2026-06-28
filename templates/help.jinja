@@ -49,14 +49,15 @@
       <p style="color:var(--muted);font-size:13px;"><em>Do NOT use for:</em> real-time sync, WebDAV, or multi-user auth beyond a shared access key.</p>
 
       <h3>Core Pattern</h3>
-      <p>All requests target <code>/s/{path}?key=xxx</code>. The <code>path</code> maps to a virtual directory on the server.</p>
+      <p>All requests target <code>/s/{path}?key=xxx</code>. The <code>path</code> maps to a virtual directory on the server. Specialized tools are under <code>/tool/</code>.</p>
       <pre>GET  /s/{path}?key=xxx                # Read file or list directory
 GET  /s/{path}?key=xxx&mkdir=1        # Create directory
 GET  /s/{path}?key=xxx&upload_url=URL # Upload from URL
 GET  /s/{path}?key=xxx&content=...    # Upload text content
 GET  /s/{path}?key=xxx&delete=1       # Delete file or empty dir
 GET  /s/{path}?key=xxx&rename_to=NEW  # Rename
-GET  /s/{path}?key=xxx&move_to=/DEST  # Move</pre>
+GET  /s/{path}?key=xxx&move_to=/DEST  # Move
+GET  /tool/edit?path=...&key=xxx&old_str=...&new_str=...  # Edit text file</pre>
       <p>Agents supporting other HTTP methods:</p>
       <pre>PUT   /s/{path}?key=xxx               # Upload raw body as file
 POST  /s/{path}?key=xxx               # Upload multipart file
@@ -125,6 +126,10 @@ Content-Type: application/octet-stream
       <h4>5. Create dir + upload</h4>
       <pre>GET /s/data/newproject?key=abc123&amp;mkdir=1
 GET /s/data/newproject/main.py?key=abc123&amp;content=print("hello")</pre>
+
+      <h4>6. Edit text file (precision replace)</h4>
+      <pre>GET /tool/edit?path=/data/config.json&amp;key=abc123&amp;old_str=debug%3Atrue&amp;new_str=debug%3Afalse
+GET /tool/edit?path=/data/README.md&amp;key=abc123&amp;old_str=v1.0&amp;new_str=v2.0&amp;replace_all=1</pre>
 
 
       <h3>Error Handling</h3>
