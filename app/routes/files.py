@@ -5,13 +5,12 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Request, HTTPException, Query, File, UploadFile
-from fastapi.responses import HTMLResponse, FileResponse, PlainTextResponse, JSONResponse
+from fastapi.responses import FileResponse, PlainTextResponse, JSONResponse
 
 from app.config import settings
 from app.utils import (
     find_share_by_vpath, check_access, get_absolute_path,
-    validate_access_key, count_resource_views,
-    error_response,
+    count_resource_views, error_response,
     handle_mkdir, handle_upload_url, handle_content_upload,
     handle_delete, handle_rename, handle_put_upload, handle_multipart_upload,
     write_log, mask_key,

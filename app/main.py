@@ -1,7 +1,6 @@
 """AI Agent FTP 服务 — 入口"""
 
 import time
-from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
