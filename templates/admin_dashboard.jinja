@@ -51,7 +51,7 @@
       <div class="stat-card"><div class="num">{{ stats.shares_count }}</div><div class="label">共享目录</div></div>
       <div class="stat-card"><div class="num">{{ stats.log_entries }}</div><div class="label">日志条目</div></div>
       <div class="stat-card"><div class="num">{{ stats.log_shards }}</div><div class="label">日志分片</div></div>
-      <div class="stat-card"><div class="num">{{ "%.2f"|format(stats.log_size_mb) }} MB</div><div class="label">日志大小</div></div>
+      <div class="stat-card"><div class="num">{{ "%.2f"|format(stats.log_size_mb) }} MB</div><div class="label">日志 / 上限 {{ "%.0f"|format(stats.log_max_total_mb) }} MB</div></div>
     </div>
     {% endif %}
 

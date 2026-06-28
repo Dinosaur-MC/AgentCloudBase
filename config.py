@@ -20,8 +20,9 @@ class Settings(BaseSettings):
     log_dir: str = "logs"
     log_filename_prefix: str = "access"
     log_file_ext: str = ".jsonl"
-    log_max_size: int = 10 * 1024 * 1024      # 10 MB
-    log_max_age_days: int = 90
+    log_max_size: int = 10 * 1024 * 1024      # 单分片上限 (10 MB)
+    log_max_age_days: int = 90                # 保留天数
+    log_max_total_size: int = 500 * 1024 * 1024  # 日志总容量上限 (500 MB)
 
     # ------------------- 上传/安全配置 -------------------
     max_upload_size: int = 500 * 1024 * 1024    # 500 MB

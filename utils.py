@@ -63,11 +63,30 @@ def _list_log_shards() -> List[Path]:
 
 def _cleanup_old_logs():
     shards = _list_log_shards()
-    cutoff = datetime.now().timestamp() - settings.log_max_age_days * 86400
+    if not shards:
+        return
     current = _current_shard_path()
-    for shard in shards:
-        if shard.stat().st_mtime < cutoff and shard != current:
+    # 按时间从旧到新排序，保留当前分片
+    old = [s for s in shards if s != current]
+
+    # 策略 1: 按天数清理
+    cutoff = datetime.now().timestamp() - settings.log_max_age_days * 86400
+    for shard in old:
+        if shard.stat().st_mtime < cutoff:
             shard.unlink(missing_ok=True)
+
+    # 策略 2: 按总容量清理（从最旧的分片开始删）
+    remaining = _list_log_shards()
+    total = sum(s.stat().st_size for s in remaining)
+    if total > settings.log_max_total_size:
+        for shard in sorted(remaining, key=lambda s: s.stat().st_mtime):
+            if shard == _current_shard_path():
+                continue
+            size = shard.stat().st_size
+            shard.unlink(missing_ok=True)
+            total -= size
+            if total <= settings.log_max_total_size:
+                break
 
 
 _cached_shard: Path | None = None
@@ -150,6 +169,7 @@ def compute_stats() -> dict:
         "log_shards": len(shards),
         "log_size_bytes": total_size,
         "log_size_mb": round(total_size / (1024 * 1024), 2),
+        "log_max_total_mb": round(settings.log_max_total_size / (1024 * 1024), 0),
     }
 
 
