@@ -210,7 +210,7 @@ def check_disk_space(path: str, min_free: int = None):
 
 
 def mask_key(key: str) -> str:
-    return (mask_key(key)) if key else "None"
+    return (key[:4] + "***") if key else "None"
 
 
 # ==================== JSON 响应工具 ====================
@@ -409,8 +409,9 @@ async def handle_delete(share, abs_path, path, ip, key, json_mode=False):
             abs_path.rmdir()
         else:
             abs_path.unlink()
-        entry_type = "directory" if abs_path.is_dir() else "file"
-        write_log({"action": "file_deleted", "path": path, "type": entry_type, "ip": ip, "key": mask_key(key)})
+        is_dir = abs_path.is_dir()
+        entry_type = "directory" if is_dir else "file"
+        write_log({"action": "dir_deleted" if is_dir else "file_deleted", "path": path, "type": entry_type, "ip": ip, "key": mask_key(key)})
         return success_response(f"Deleted: {path}", json_mode=json_mode)
     except (OSError, PermissionError) as e:
         return error_response(str(e), 500, json_mode)
