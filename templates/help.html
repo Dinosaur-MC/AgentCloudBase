@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><title>帮助</title></head>
+<body>
+  {% if level == "basic" %}
+    <h2>基础使用说明</h2>
+    <p>通过以下格式访问文件/目录：<br>
+    <code>http://host:8000/s/虚拟路径?key=你的访问密钥</code></p>
+    <p>可添加参数：<br>
+    - <code>&raw=1</code> 获取纯文本原始内容（仅文件）<br>
+    - <code>&download=1</code> 下载文件</p>
+    <a href="/help?level=full">完整说明</a>
+  {% else %}
+    <h2>完整使用说明</h2>
+    <p>本服务为 AI Agent 设计，提供类 FTP 的加密访问。</p>
+    <h3>端点</h3>
+    <ul>
+      <li><code>/s/{path}?key=&lt;access_key&gt;</code> – 浏览目录/查看文件</li>
+      <li><code>/admin</code> – 管理员界面（需管理员密钥）</li>
+      <li><code>/help?level=basic|full</code> – 帮助</li>
+    </ul>
+    <h3>权限说明</h3>
+    <p>每个共享目录可独立配置列表/读取权限。密钥错误或权限不足返回 403。</p>
+    <h3>安全</h3>
+    <p>务必在 HTTPS 后使用，避免密钥泄露。日志中密钥仅记录前4字符。</p>
+    <a href="/help?level=basic">基础说明</a>
+  {% endif %}
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head><title>管理面板</title></head>
+<body>
+  <h1>管理面板</h1>
+  <a href="/admin/logout">登出</a> | <a href="/admin/logs">查看日志</a>
+  <hr>
+  <h3>当前共享目录</h3>
+  <ul>
+  {% for share in shares %}
+    <li>
+      <strong>{{ share.name }}</strong> ({{ share.virtual_path }} -> {{ share.real_path }})
+      权限: list={{ share.permissions.list }}, read={{ share.permissions.read }}
+      密钥: {{ share.access_key }}
+      <form method="post" action="/admin/shares/delete/{{ share.id }}" style="display:inline">
+        <button type="submit">删除</button>
+      </form>
+    </li>
+  {% endfor %}
+  </ul>
+  
+  <h3>添加新共享</h3>
+  <form method="post" action="/admin/shares/add">
+    <p>名称: <input name="name" required></p>
+    <p>虚拟路径: <input name="virtual_path" placeholder="/mydata" required></p>
+    <p>真实路径: <input name="real_path" placeholder="/home/user/data" required></p>
+    <p>允许列表: <input type="checkbox" name="list_perm" checked></p>
+    <p>允许读取: <input type="checkbox" name="read_perm" checked></p>
+    <p>访问密钥: <input name="access_key" required></p>
+    <button type="submit">添加</button>
+  </form>
+</body>
+</html>

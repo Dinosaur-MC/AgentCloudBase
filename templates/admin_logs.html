@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head><title>访问日志</title></head>
+<body>
+  <h1>访问日志</h1>
+  <a href="/admin">返回管理</a>
+  <table border="1" cellpadding="5">
+    <tr><th>时间</th><th>操作</th><th>路径</th><th>IP</th><th>密钥片段</th><th>详情</th></tr>
+    {% for log in logs %}
+    <tr>
+      <td>{{ log.timestamp }}</td>
+      <td>{{ log.action }}</td>
+      <td>{{ log.get("path", "") }}</td>
+      <td>{{ log.ip }}</td>
+      <td>{{ log.get("key", "") }}</td>
+      <td>{{ log }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <div>
+    {% if page > 1 %}<a href="?page={{ page - 1 }}">上一页</a>{% endif %}
+    第 {{ page }} / {{ total_pages }} 页
+    {% if page < total_pages %}<a href="?page={{ page + 1 }}">下一页</a>{% endif %}
+  </div>
+</body>
+</html>

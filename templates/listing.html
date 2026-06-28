@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head><title>Index of /{{ path }}</title></head>
+<body>
+  <p><strong>服务内容:</strong> 目录列表 - {{ share_name }} - /{{ path }}</p>
+  <hr>
+  <ul>
+  {% for entry in entries %}
+    <li>
+      [{{ entry.type }}] <a href="/s/{{ path.rstrip('/') }}/{{ entry.name }}?key={{ key }}">{{ entry.name }}</a>
+      {% if entry.type == "file" %} ({{ entry.size }} bytes, {{ entry.modified }}){% endif %}
+    </li>
+  {% endfor %}
+  </ul>
+  <hr>
+  <small>统计信息: {{ entries|length }} 个项目 | <a href="/help?level=basic">帮助</a></small>
+</body>
+</html>

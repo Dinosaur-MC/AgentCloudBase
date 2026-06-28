@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head><title>{{ filename }}</title></head>
+<body>
+  <p><strong>文件:</strong> {{ filename }} | 大小: {{ size }} bytes | 修改时间: {{ modified }}</p>
+  <hr>
+  {% if is_text %}
+    <pre>{{ content }}</pre>
+  {% else %}
+    <p>[二进制文件，无法直接预览] <a href="/s/{{ path }}?key={{ key }}&download=1">点击下载</a></p>
+  {% endif %}
+  <hr>
+  <small>该资源已被访问 {{ view_count }} 次 | <a href="/help?level=basic">帮助</a> | <a href="/s/{{ path }}?key={{ key }}&raw=1">原始内容</a></small>
+</body>
+</html>
