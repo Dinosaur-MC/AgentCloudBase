@@ -244,8 +244,11 @@ def validate_access_key(share: ShareConfig, key: Optional[str]) -> bool:
 
 def get_absolute_path(share: ShareConfig, request_path: str) -> Path:
     relative = request_path
-    cfg_vpath = share.virtual_path.rstrip("/") + "/"
-    if request_path.startswith(cfg_vpath):
+    cfg_vpath_raw = share.virtual_path.rstrip("/")
+    cfg_vpath = cfg_vpath_raw + "/"
+    if request_path.rstrip("/") == cfg_vpath_raw:
+        relative = ""
+    elif request_path.startswith(cfg_vpath):
         relative = request_path[len(cfg_vpath):]
     safe_relative = os.path.normpath(relative).lstrip("/")
     real_root = os.path.realpath(share.real_path)
