@@ -129,17 +129,6 @@ Content-Type: application/octet-stream
 GET /s/data/newproject?key=abc123&mkdir=1
 GET /s/data/newproject/main.py?key=abc123&content=print(%22hello%22)
 ```
-
-## Admin Endpoints
-
-| Endpoint | Description | Auth |
-|----------|-------------|------|
-| `GET /admin` | Admin dashboard | Cookie auth |
-| `POST /admin/login` | Login with admin key | Form |
-| `GET /admin/stats` | Server statistics (JSON) | Cookie auth |
-| `GET /admin/logs?action=&path=&ip=&keyword=&date_from=&date_to=` | Filterable access logs | Cookie auth |
-| `GET /health` | Health check | None |
-
 ## Error Handling
 
 All errors return appropriate HTTP status codes:
@@ -161,4 +150,3 @@ With `?json=1`, errors return `{"success": false, "error": "...", "code": N}`.
 3. **Cross-share move** — Moving files between different shares is rejected
 4. **Deleting non-empty directory** — Must delete contents first (or use recursive delete)
 5. **Overwriting existing target on rename** — Rename/move fails with 409 if target exists
-6. **Request logging** — Admin GET page views are not logged (only login/logout/config changes)
