@@ -23,21 +23,28 @@ from jose import JWTError, jwt
 
 from app.config import settings
 
-
 # ==================== 数据模型 ====================
+
 
 class ShareConfig(BaseModel):
     id: str
     name: str
     virtual_path: str
     real_path: str
-    permissions: dict = {"list": True, "read": True, "write": False, "delete": False, "rename": False}
+    permissions: dict = {
+        "list": True,
+        "read": True,
+        "write": False,
+        "delete": False,
+        "rename": False,
+    }
     access_key: str
     enabled: bool = True
     access_key_expires: str = ""  # ISO date string, empty = never expires
 
 
 # ==================== 配置读写 ====================
+
 
 def load_config() -> List[ShareConfig]:
     if not os.path.exists(settings.config_file):
@@ -49,10 +56,13 @@ def load_config() -> List[ShareConfig]:
 
 def save_config(configs: List[ShareConfig]):
     with open(settings.config_file, "w", encoding="utf-8") as f:
-        json.dump([cfg.model_dump() for cfg in configs], f, indent=2, ensure_ascii=False)
+        json.dump(
+            [cfg.model_dump() for cfg in configs], f, indent=2, ensure_ascii=False
+        )
 
 
 # ==================== 日志分片工具 ====================
+
 
 def _ensure_log_dir():
     os.makedirs(settings.log_dir, exist_ok=True)
@@ -60,7 +70,11 @@ def _ensure_log_dir():
 
 def _list_log_shards() -> List[Path]:
     _ensure_log_dir()
-    return sorted(Path(settings.log_dir).glob(f"{settings.log_filename_prefix}*{settings.log_file_ext}"))
+    return sorted(
+        Path(settings.log_dir).glob(
+            f"{settings.log_filename_prefix}*{settings.log_file_ext}"
+        )
+    )
 
 
 def _cleanup_old_logs():
@@ -97,23 +111,37 @@ _shard_lock = threading.Lock()
 
 def _current_shard_path() -> Path:
     global _cached_shard
-    if _cached_shard is not None and _cached_shard.exists() and _cached_shard.stat().st_size < settings.log_max_size:
+    if (
+        _cached_shard is not None
+        and _cached_shard.exists()
+        and _cached_shard.stat().st_size < settings.log_max_size
+    ):
         return _cached_shard
     with _shard_lock:
         # 双重检查：拿到锁后可能已有其他线程更新了缓存
-        if _cached_shard is not None and _cached_shard.exists() and _cached_shard.stat().st_size < settings.log_max_size:
+        if (
+            _cached_shard is not None
+            and _cached_shard.exists()
+            and _cached_shard.stat().st_size < settings.log_max_size
+        ):
             return _cached_shard
         _ensure_log_dir()
         shards = _list_log_shards()
         if not shards:
-            _cached_shard = Path(settings.log_dir) / f"{settings.log_filename_prefix}{settings.log_file_ext}"
+            _cached_shard = (
+                Path(settings.log_dir)
+                / f"{settings.log_filename_prefix}{settings.log_file_ext}"
+            )
         else:
             latest = shards[-1]
             if latest.stat().st_size < settings.log_max_size:
                 _cached_shard = latest
             else:
                 ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-                _cached_shard = Path(settings.log_dir) / f"{settings.log_filename_prefix}_{ts}{settings.log_file_ext}"
+                _cached_shard = (
+                    Path(settings.log_dir)
+                    / f"{settings.log_filename_prefix}_{ts}{settings.log_file_ext}"
+                )
     return _cached_shard
 
 
@@ -151,7 +179,7 @@ def iter_all_logs() -> List[dict]:
 
 def read_logs(limit: int = 100, offset: int = 0) -> List[dict]:
     logs = iter_all_logs()
-    return list(reversed(logs))[offset: offset + limit]
+    return list(reversed(logs))[offset : offset + limit]
 
 
 def compute_stats() -> dict:
@@ -177,11 +205,15 @@ def compute_stats() -> dict:
 
 def count_resource_views(path: str) -> int:
     target = path.lstrip("/")
-    return sum(1 for entry in iter_all_logs()
-               if entry.get("action") == "access" and entry.get("path") == target)
+    return sum(
+        1
+        for entry in iter_all_logs()
+        if entry.get("action") == "access" and entry.get("path") == target
+    )
 
 
 # ==================== 速率限制器 ====================
+
 
 class RateLimiter:
     def __init__(self, max_requests: int, window_seconds: int = 60):
@@ -204,20 +236,27 @@ write_rate_limiter = RateLimiter(settings.write_rate_limit)
 
 # ==================== 安全校验工具 ====================
 
+
 def validate_filename(name: str) -> str:
     if not name or name in (".", ".."):
         raise HTTPException(status_code=400, detail="Invalid filename")
     if "/" in name or "\\" in name:
-        raise HTTPException(status_code=400, detail="Filename cannot contain path separators")
+        raise HTTPException(
+            status_code=400, detail="Filename cannot contain path separators"
+        )
     if "\0" in name:
         raise HTTPException(status_code=400, detail="Invalid filename")
     if name.startswith(".") or name.endswith("."):
-        raise HTTPException(status_code=400, detail="Filename cannot start or end with a dot")
+        raise HTTPException(
+            status_code=400, detail="Filename cannot start or end with a dot"
+        )
     # 替换 Windows 保留字符
     cleaned = re.sub(r'[<>:"|?*]', "_", name)
     cleaned = unicodedata.normalize("NFC", cleaned).strip()
     if not cleaned:
-        raise HTTPException(status_code=400, detail="Filename is empty after sanitization")
+        raise HTTPException(
+            status_code=400, detail="Filename is empty after sanitization"
+        )
     if len(cleaned) > 255:
         raise HTTPException(status_code=400, detail="Filename too long (max 255 chars)")
     return cleaned
@@ -231,7 +270,9 @@ def validate_upload_url(url: str) -> str:
         host = socket.gethostbyname(parsed.hostname)
         addr = ipaddress.ip_address(host)
         if addr.is_private or addr.is_loopback or addr.is_link_local:
-            raise HTTPException(status_code=400, detail="URL points to a private/internal address")
+            raise HTTPException(
+                status_code=400, detail="URL points to a private/internal address"
+            )
     except socket.gaierror:
         raise HTTPException(status_code=400, detail="Could not resolve upload URL host")
     return url
@@ -251,13 +292,16 @@ def mask_key(key: str) -> str:
 
 # ==================== JSON 响应工具 ====================
 
+
 def json_response(data: dict, status_code: int = 200):
     return JSONResponse(content=data, status_code=status_code)
 
 
 def error_response(message: str, code: int = 400, json_mode: bool = False):
     if json_mode:
-        return JSONResponse(content={"success": False, "error": message, "code": code}, status_code=code)
+        return JSONResponse(
+            content={"success": False, "error": message, "code": code}, status_code=code
+        )
     raise HTTPException(status_code=code, detail=message)
 
 
@@ -273,6 +317,7 @@ def success_response(message: str = "", data: dict = None, json_mode: bool = Fal
 
 
 # ==================== 共享匹配与鉴权 ====================
+
 
 def find_share_by_vpath(virtual_path: str) -> Optional[ShareConfig]:
     configs = load_config()
@@ -331,7 +376,7 @@ def get_absolute_path(share: ShareConfig, request_path: str) -> Path:
     if request_path.rstrip("/") == cfg_vpath_raw:
         relative = ""
     elif request_path.startswith(cfg_vpath):
-        relative = request_path[len(cfg_vpath):]
+        relative = request_path[len(cfg_vpath) :]
     safe_relative = os.path.normpath(relative).lstrip("/")
     real_root = os.path.realpath(share.real_path)
     real_path_str = os.path.realpath(os.path.join(real_root, safe_relative))
@@ -345,35 +390,75 @@ def get_absolute_path(share: ShareConfig, request_path: str) -> Path:
 
 # ==================== 写操作安全检查链 ====================
 
+
 def check_share_permission(share: ShareConfig, perm: str) -> bool:
     return share.permissions.get(perm, False)
 
 
-def require_write_permission(share: ShareConfig, path: str, ip: str, key: str, json_mode: bool = False):
+def require_write_permission(
+    share: ShareConfig, path: str, ip: str, key: str, json_mode: bool = False
+):
     if not check_share_permission(share, "write"):
-        write_log({"action": "upload_denied", "path": path, "ip": ip, "key": mask_key(key), "reason": "permission_denied"})
+        write_log(
+            {
+                "action": "upload_denied",
+                "path": path,
+                "ip": ip,
+                "key": mask_key(key),
+                "reason": "permission_denied",
+            }
+        )
         return error_response("Write permission denied", 403, json_mode)
     if not write_rate_limiter.check(f"{ip}:{key[:4] if key else ''}"):
-        write_log({"action": "upload_denied", "path": path, "ip": ip, "key": mask_key(key), "reason": "rate_limited"})
+        write_log(
+            {
+                "action": "upload_denied",
+                "path": path,
+                "ip": ip,
+                "key": mask_key(key),
+                "reason": "rate_limited",
+            }
+        )
         return error_response("Rate limit exceeded. Try again later.", 429, json_mode)
     return None
 
 
-def require_delete_permission(share: ShareConfig, path: str, ip: str, key: str, json_mode: bool = False):
+def require_delete_permission(
+    share: ShareConfig, path: str, ip: str, key: str, json_mode: bool = False
+):
     if not check_share_permission(share, "delete"):
-        write_log({"action": "delete_denied", "path": path, "ip": ip, "key": mask_key(key), "reason": "permission_denied"})
+        write_log(
+            {
+                "action": "delete_denied",
+                "path": path,
+                "ip": ip,
+                "key": mask_key(key),
+                "reason": "permission_denied",
+            }
+        )
         return error_response("Delete permission denied", 403, json_mode)
     return None
 
 
-def require_rename_permission(share: ShareConfig, path: str, ip: str, key: str, json_mode: bool = False):
+def require_rename_permission(
+    share: ShareConfig, path: str, ip: str, key: str, json_mode: bool = False
+):
     if not check_share_permission(share, "rename"):
-        write_log({"action": "rename_denied", "path": path, "ip": ip, "key": mask_key(key), "reason": "permission_denied"})
+        write_log(
+            {
+                "action": "rename_denied",
+                "path": path,
+                "ip": ip,
+                "key": mask_key(key),
+                "reason": "permission_denied",
+            }
+        )
         return error_response("Rename permission denied", 403, json_mode)
     return None
 
 
 # ==================== 文件操作处理函数 ====================
+
 
 async def handle_mkdir(share, abs_path, path, ip, key, json_mode=False):
     err = require_write_permission(share, path, ip, key, json_mode)
@@ -383,31 +468,47 @@ async def handle_mkdir(share, abs_path, path, ip, key, json_mode=False):
         return error_response("Path already exists", 409, json_mode)
     try:
         abs_path.mkdir(parents=True, exist_ok=True)
-        write_log({"action": "dir_created", "path": path, "ip": ip, "key": mask_key(key)})
+        write_log(
+            {"action": "dir_created", "path": path, "ip": ip, "key": mask_key(key)}
+        )
         return success_response(f"Directory created: {path}", json_mode=json_mode)
     except (OSError, PermissionError) as e:
         return error_response(str(e), 500, json_mode)
 
 
-async def handle_upload_url(share, abs_path, url, filename, path, ip, key, json_mode=False):
+async def handle_upload_url(
+    share, abs_path, url, filename, path, ip, key, json_mode=False
+):
     err = require_write_permission(share, path, ip, key, json_mode)
     if err:
         return err
     validate_upload_url(url)
     if not filename:
-        filename = os.path.basename(urlparse(url).path) or f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}.bin"
+        filename = (
+            os.path.basename(urlparse(url).path)
+            or f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}.bin"
+        )
     filename = validate_filename(filename)
     target = abs_path if abs_path.is_dir() else abs_path.parent
     final_path = target / filename
     check_disk_space(str(final_path))
     import httpx
+
     temp_path = final_path.with_suffix(final_path.suffix + ".tmp")
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(settings.upload_url_timeout, connect=settings.upload_url_timeout)) as client:
-            async with client.stream("GET", url, max_redirects=settings.upload_url_max_redirects) as resp:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(
+                settings.upload_url_timeout, connect=settings.upload_url_timeout
+            )
+        ) as client:
+            async with client.stream(
+                "GET", url, max_redirects=settings.upload_url_max_redirects
+            ) as resp:
                 if resp.status_code not in (200, 206):
                     temp_path.unlink(missing_ok=True)
-                    return error_response(f"Upload URL returned status {resp.status_code}", 400, json_mode)
+                    return error_response(
+                        f"Upload URL returned status {resp.status_code}", 400, json_mode
+                    )
                 size = 0
                 with open(temp_path, "wb") as f:
                     async for chunk in resp.aiter_bytes():
@@ -418,14 +519,29 @@ async def handle_upload_url(share, abs_path, url, filename, path, ip, key, json_
                         f.write(chunk)
         os.rename(temp_path, final_path)
         rel = str(final_path.relative_to(Path(share.real_path).resolve()))
-        write_log({"action": "file_uploaded", "path": rel, "ip": ip, "key": mask_key(key), "source": "upload_url", "size": size})
-        return success_response(f"File uploaded: {final_path.name}", {"name": final_path.name, "size": size}, json_mode)
+        write_log(
+            {
+                "action": "file_uploaded",
+                "path": rel,
+                "ip": ip,
+                "key": mask_key(key),
+                "source": "upload_url",
+                "size": size,
+            }
+        )
+        return success_response(
+            f"File uploaded: {final_path.name}",
+            {"name": final_path.name, "size": size},
+            json_mode,
+        )
     except httpx.RequestError as e:
         temp_path.unlink(missing_ok=True)
         return error_response(f"Failed to download from URL: {str(e)}", 502, json_mode)
 
 
-async def handle_content_upload(share, abs_path, content_data, filename, path, ip, key, json_mode=False):
+async def handle_content_upload(
+    share, abs_path, content_data, filename, path, ip, key, json_mode=False
+):
     err = require_write_permission(share, path, ip, key, json_mode)
     if err:
         return err
@@ -436,9 +552,14 @@ async def handle_content_upload(share, abs_path, content_data, filename, path, i
     if len(encoded) > settings.max_content_param_size:
         return error_response("Content too large (max 64KB)", 413, json_mode)
     if "\0" in encoded:
-        return error_response("Binary content not allowed via content parameter", 400, json_mode)
+        return error_response(
+            "Binary content not allowed via content parameter", 400, json_mode
+        )
     if not filename:
-        filename = os.path.basename(path.rstrip("/")) or f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        filename = (
+            os.path.basename(path.rstrip("/"))
+            or f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        )
     filename = validate_filename(filename)
     target = abs_path if abs_path.is_dir() else abs_path.parent
     final_path = target / filename
@@ -448,8 +569,21 @@ async def handle_content_upload(share, abs_path, content_data, filename, path, i
     os.rename(temp_path, final_path)
     size = len(encoded)
     rel = str(final_path.relative_to(Path(share.real_path).resolve()))
-    write_log({"action": "file_uploaded", "path": rel, "ip": ip, "key": mask_key(key), "source": "content_param", "size": size})
-    return success_response(f"File uploaded: {final_path.name}", {"name": final_path.name, "size": size}, json_mode)
+    write_log(
+        {
+            "action": "file_uploaded",
+            "path": rel,
+            "ip": ip,
+            "key": mask_key(key),
+            "source": "content_param",
+            "size": size,
+        }
+    )
+    return success_response(
+        f"File uploaded: {final_path.name}",
+        {"name": final_path.name, "size": size},
+        json_mode,
+    )
 
 
 async def handle_delete(share, abs_path, path, ip, key, json_mode=False):
@@ -464,7 +598,9 @@ async def handle_delete(share, abs_path, path, ip, key, json_mode=False):
     if abs_path.is_dir():
         try:
             if any(abs_path.iterdir()):
-                return error_response("Directory not empty. Delete its contents first.", 409, json_mode)
+                return error_response(
+                    "Directory not empty. Delete its contents first.", 409, json_mode
+                )
         except (OSError, PermissionError) as e:
             return error_response(str(e), 500, json_mode)
     try:
@@ -475,15 +611,27 @@ async def handle_delete(share, abs_path, path, ip, key, json_mode=False):
             abs_path.rmdir()
         else:
             abs_path.unlink()
-        entry_type = "symlink" if is_sym else ("directory" if abs_path.is_dir() else "file")
+        entry_type = (
+            "symlink" if is_sym else ("directory" if abs_path.is_dir() else "file")
+        )
         was_dir = abs_path.is_dir() and not is_sym
-        write_log({"action": "dir_deleted" if was_dir else "file_deleted", "path": path, "type": entry_type, "ip": ip, "key": mask_key(key)})
+        write_log(
+            {
+                "action": "dir_deleted" if was_dir else "file_deleted",
+                "path": path,
+                "type": entry_type,
+                "ip": ip,
+                "key": mask_key(key),
+            }
+        )
         return success_response(f"Deleted: {path}", json_mode=json_mode)
     except (OSError, PermissionError) as e:
         return error_response(str(e), 500, json_mode)
 
 
-async def handle_rename(share, abs_path, new_name, path, ip, key, move_target=None, json_mode=False):
+async def handle_rename(
+    share, abs_path, new_name, path, ip, key, move_target=None, json_mode=False
+):
     err = require_rename_permission(share, path, ip, key, json_mode)
     if err:
         return err
@@ -504,29 +652,52 @@ async def handle_rename(share, abs_path, new_name, path, ip, key, move_target=No
     if final_path.exists():
         return error_response("Target already exists", 409, json_mode)
     real_root = os.path.realpath(share.real_path)
-    if not str(final_path.resolve()).startswith(real_root + os.sep) and str(final_path.resolve()) != real_root:
+    if (
+        not str(final_path.resolve()).startswith(real_root + os.sep)
+        and str(final_path.resolve()) != real_root
+    ):
         return error_response("Target path outside share root", 403, json_mode)
     try:
         abs_path.rename(final_path)
         rel = str(final_path.relative_to(Path(share.real_path).resolve()))
-        write_log({"action": "file_renamed", "path": path, "dest": rel, "ip": ip, "key": mask_key(key)})
-        return success_response(f"Renamed to: {final_path.name}", {"from": path, "to": rel}, json_mode)
+        write_log(
+            {
+                "action": "file_renamed",
+                "path": path,
+                "dest": rel,
+                "ip": ip,
+                "key": mask_key(key),
+            }
+        )
+        return success_response(
+            f"Renamed to: {final_path.name}", {"from": path, "to": rel}, json_mode
+        )
     except OSError as e:
-        if getattr(e, "winerror", None) == 17 or getattr(e, "errno", None) == 18:  # EXDEV
-            return error_response("Cannot move across filesystem boundaries. Use copy+delete instead.", 400, json_mode)
+        if (
+            getattr(e, "winerror", None) == 17 or getattr(e, "errno", None) == 18
+        ):  # EXDEV
+            return error_response(
+                "Cannot move across filesystem boundaries. Use copy+delete instead.",
+                400,
+                json_mode,
+            )
         return error_response(str(e), 500, json_mode)
     except PermissionError as e:
         return error_response(str(e), 500, json_mode)
 
 
-async def handle_put_upload(request, share, abs_path, path, key, json_mode, filename=None):
+async def handle_put_upload(
+    request, share, abs_path, path, key, json_mode, filename=None
+):
     err = require_write_permission(share, path, request.client.host, key, json_mode)
     if err:
         return err
     if abs_path.is_dir() and filename:
         abs_path = abs_path / validate_filename(filename)
     elif abs_path.is_dir() and not filename:
-        return error_response("Filename required when uploading to a directory", 400, json_mode)
+        return error_response(
+            "Filename required when uploading to a directory", 400, json_mode
+        )
     if not abs_path.parent.exists():
         return error_response("Parent directory does not exist", 404, json_mode)
     check_disk_space(str(abs_path))
@@ -537,16 +708,33 @@ async def handle_put_upload(request, share, abs_path, path, key, json_mode, file
     with open(temp_path, "wb") as f:
         f.write(body)
     os.rename(temp_path, abs_path)
-    write_log({"action": "file_uploaded", "path": path, "ip": request.client.host, "key": mask_key(key), "source": "put", "size": len(body)})
-    return success_response(f"File uploaded: {abs_path.name}", {"name": abs_path.name, "size": len(body)}, json_mode)
+    write_log(
+        {
+            "action": "file_uploaded",
+            "path": path,
+            "ip": request.client.host,
+            "key": mask_key(key),
+            "source": "put",
+            "size": len(body),
+        }
+    )
+    return success_response(
+        f"File uploaded: {abs_path.name}",
+        {"name": abs_path.name, "size": len(body)},
+        json_mode,
+    )
 
 
-async def handle_edit(share, abs_path, old_str, new_str, replace_all, path, ip, key, json_mode=False):
+async def handle_edit(
+    share, abs_path, old_str, new_str, replace_all, path, ip, key, json_mode=False
+):
     err = require_write_permission(share, path, ip, key, json_mode)
     if err:
         return err
     if not old_str or new_str is None:
-        return error_response("old_str and new_str are required for edit operation", 400, json_mode)
+        return error_response(
+            "old_str and new_str are required for edit operation", 400, json_mode
+        )
     if not abs_path.exists():
         return error_response("File not found", 404, json_mode)
     if abs_path.is_dir():
@@ -566,11 +754,25 @@ async def handle_edit(share, abs_path, old_str, new_str, replace_all, path, ip, 
     temp_path = abs_path.with_suffix(abs_path.suffix + ".tmp")
     temp_path.write_text(new_content, encoding="utf-8")
     os.rename(temp_path, abs_path)
-    write_log({"action": "file_edited", "path": path, "ip": ip, "key": mask_key(key), "replacements": count})
-    return success_response(f"Replaced {count} occurrence(s)", {"replacements": count, "old_len": len(old_str), "new_len": len(new_str)}, json_mode)
+    write_log(
+        {
+            "action": "file_edited",
+            "path": path,
+            "ip": ip,
+            "key": mask_key(key),
+            "replacements": count,
+        }
+    )
+    return success_response(
+        f"Replaced {count} occurrence(s)",
+        {"replacements": count, "old_len": len(old_str), "new_len": len(new_str)},
+        json_mode,
+    )
 
 
-async def handle_multipart_upload(request, share, abs_path, path, key, file, json_mode=False, filename=None):
+async def handle_multipart_upload(
+    request, share, abs_path, path, key, file, json_mode=False, filename=None
+):
     err = require_write_permission(share, path, request.client.host, key, json_mode)
     if err:
         return err
@@ -592,11 +794,25 @@ async def handle_multipart_upload(request, share, abs_path, path, key, file, jso
                 return error_response("File too large (max 500MB)", 413, json_mode)
             f.write(chunk)
     os.rename(temp_path, final_path)
-    write_log({"action": "file_uploaded", "path": path, "ip": request.client.host, "key": mask_key(key), "source": "multipart", "size": size})
-    return success_response(f"File uploaded: {final_path.name}", {"name": final_path.name, "size": size}, json_mode)
+    write_log(
+        {
+            "action": "file_uploaded",
+            "path": path,
+            "ip": request.client.host,
+            "key": mask_key(key),
+            "source": "multipart",
+            "size": size,
+        }
+    )
+    return success_response(
+        f"File uploaded: {final_path.name}",
+        {"name": final_path.name, "size": size},
+        json_mode,
+    )
 
 
 # ==================== JWT 工具 ====================
+
 
 def create_jwt_token(data: dict) -> str:
     expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
@@ -610,7 +826,9 @@ def get_admin_from_cookie(request: Request) -> Optional[str]:
     if not token:
         return None
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.jwt_algorithm]
+        )
         return payload.get("sub")
     except JWTError:
         return None

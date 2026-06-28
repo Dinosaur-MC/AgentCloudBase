@@ -1,8 +1,9 @@
 """AI Agent FTP 服务 — 入口"""
 
 import time
+from typing import Awaitable, Callable
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.utils import write_log
@@ -20,23 +21,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ------------------- 请求日志中间件 -------------------
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def log_requests(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+):
     start = time.time()
     response = await call_next(request)
     duration_ms = int((time.time() - start) * 1000)
     path = request.url.path
     if not (request.method == "GET" and path.startswith("/admin")):
-        write_log({
-            "action": "request",
-            "method": request.method,
-            "path": path,
-            "status": response.status_code,
-            "duration_ms": duration_ms,
-            "ip": request.client.host if request.client else "unknown",
-        })
+        write_log(
+            {
+                "action": "request",
+                "method": request.method,
+                "path": path,
+                "status": response.status_code,
+                "duration_ms": duration_ms,
+                "ip": request.client.host if request.client else "unknown",
+            }
+        )
     return response
+
 
 # ------------------- 注册路由 -------------------
 app.include_router(admin.router)

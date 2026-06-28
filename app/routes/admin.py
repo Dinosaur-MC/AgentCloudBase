@@ -11,9 +11,14 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.config import settings
 from app.utils import (
-    ShareConfig, load_config, save_config, write_log,
-    iter_all_logs, compute_stats,
-    create_jwt_token, get_admin_from_cookie,
+    ShareConfig,
+    load_config,
+    save_config,
+    write_log,
+    iter_all_logs,
+    compute_stats,
+    create_jwt_token,
+    get_admin_from_cookie,
 )
 from app.common import templates
 from app.deps import require_admin
@@ -30,7 +35,9 @@ async def admin_page(request: Request):
     stats = compute_stats()
     now_str = datetime.now().strftime("%Y-%m-%d")
     return templates.TemplateResponse(
-        request, "admin_dashboard.jinja", {"shares": configs, "stats": stats, "now": now_str}
+        request,
+        "admin_dashboard.jinja",
+        {"shares": configs, "stats": stats, "now": now_str},
     )
 
 
@@ -42,7 +49,12 @@ async def admin_login(request: Request, key: str = Form(...)):
         )
     token = create_jwt_token({"sub": "admin"})
     resp = RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
-    resp.set_cookie("admin_token", token, httponly=True, max_age=settings.access_token_expire_minutes * 60)
+    resp.set_cookie(
+        "admin_token",
+        token,
+        httponly=True,
+        max_age=settings.access_token_expire_minutes * 60,
+    )
     write_log({"action": "admin_login", "ip": request.client.host})
     return resp
 
@@ -73,15 +85,26 @@ async def add_share(
     configs = load_config()
     new_id = hashlib.md5(f"{name}{virtual_path}{time.time()}".encode()).hexdigest()[:8]
     new_share = ShareConfig(
-        id=new_id, name=name,
-        virtual_path=virtual_path, real_path=os.path.realpath(real_path),
-        permissions={"list": list_perm, "read": read_perm, "write": write_perm,
-                      "delete": delete_perm, "rename": rename_perm},
-        access_key=access_key, enabled=enabled, access_key_expires=access_key_expires,
+        id=new_id,
+        name=name,
+        virtual_path=virtual_path,
+        real_path=os.path.realpath(real_path),
+        permissions={
+            "list": list_perm,
+            "read": read_perm,
+            "write": write_perm,
+            "delete": delete_perm,
+            "rename": rename_perm,
+        },
+        access_key=access_key,
+        enabled=enabled,
+        access_key_expires=access_key_expires,
     )
     configs.append(new_share)
     save_config(configs)
-    write_log({"action": "share_added", "id": new_id, "name": name, "ip": request.client.host})
+    write_log(
+        {"action": "share_added", "id": new_id, "name": name, "ip": request.client.host}
+    )
     return RedirectResponse("/admin", status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -98,7 +121,8 @@ async def delete_share(request: Request, share_id: str, admin=Depends(require_ad
 
 @router.post("/admin/shares/update/{share_id}")
 async def update_share(
-    request: Request, share_id: str,
+    request: Request,
+    share_id: str,
     enabled: bool = Form(False),
     access_key: str = Form(""),
     access_key_expires: str = Form(""),
@@ -112,7 +136,9 @@ async def update_share(
                 share.access_key = access_key
             share.access_key_expires = access_key_expires
             save_config(configs)
-            write_log({"action": "share_updated", "id": share_id, "ip": request.client.host})
+            write_log(
+                {"action": "share_updated", "id": share_id, "ip": request.client.host}
+            )
             break
     return RedirectResponse("/admin", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -125,7 +151,8 @@ async def admin_stats(admin=Depends(require_admin)):
 @router.get("/admin/logs", response_class=HTMLResponse)
 async def view_logs(
     request: Request,
-    page: int = 1, per_page: int = 50,
+    page: int = 1,
+    per_page: int = 50,
     action: str = Query(None),
     path_filter: str = Query(None, alias="path"),
     ip_filter: str = Query(None, alias="ip"),
@@ -138,29 +165,49 @@ async def view_logs(
     if action:
         all_logs = [l for l in all_logs if l.get("action") == action]
     if path_filter:
-        all_logs = [l for l in all_logs if path_filter.lower() in l.get("path", "").lower()]
+        all_logs = [
+            l for l in all_logs if path_filter.lower() in l.get("path", "").lower()
+        ]
     if ip_filter:
         all_logs = [l for l in all_logs if ip_filter in l.get("ip", "")]
     if keyword:
         kw = keyword.lower()
-        all_logs = [l for l in all_logs if kw in json.dumps(l, ensure_ascii=False).lower()]
+        all_logs = [
+            l for l in all_logs if kw in json.dumps(l, ensure_ascii=False).lower()
+        ]
     if date_from:
         try:
             dt_from = datetime.fromisoformat(date_from)
-            all_logs = [l for l in all_logs if datetime.fromisoformat(l["timestamp"]) >= dt_from]
-        except (ValueError, KeyError): pass
+            all_logs = [
+                l for l in all_logs if datetime.fromisoformat(l["timestamp"]) >= dt_from
+            ]
+        except (ValueError, KeyError):
+            pass
     if date_to:
         try:
             dt_to = datetime.fromisoformat(date_to + "T23:59:59")
-            all_logs = [l for l in all_logs if datetime.fromisoformat(l["timestamp"]) <= dt_to]
-        except (ValueError, KeyError): pass
+            all_logs = [
+                l for l in all_logs if datetime.fromisoformat(l["timestamp"]) <= dt_to
+            ]
+        except (ValueError, KeyError):
+            pass
     total_logs = len(all_logs)
     offset = (page - 1) * per_page
-    logs = list(reversed(all_logs))[offset: offset + per_page]
+    logs = list(reversed(all_logs))[offset : offset + per_page]
     total_pages = max(1, (total_logs + per_page - 1) // per_page)
-    return templates.TemplateResponse(request, "admin_logs.jinja", {
-        "logs": logs, "page": page, "total_pages": total_pages, "total_logs": total_logs,
-        "action": action or "", "path_filter": path_filter or "",
-        "ip_filter": ip_filter or "", "keyword": keyword or "",
-        "date_from": date_from or "", "date_to": date_to or "",
-    })
+    return templates.TemplateResponse(
+        request,
+        "admin_logs.jinja",
+        {
+            "logs": logs,
+            "page": page,
+            "total_pages": total_pages,
+            "total_logs": total_logs,
+            "action": action or "",
+            "path_filter": path_filter or "",
+            "ip_filter": ip_filter or "",
+            "keyword": keyword or "",
+            "date_from": date_from or "",
+            "date_to": date_to or "",
+        },
+    )
