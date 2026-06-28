@@ -279,8 +279,10 @@ async def serve_content(
     delete: int = Query(0),
     rename_to: str = Query(None),
     move_to: str = Query(None),
+    help: str = Query(None),
 ):
     json_mode = json == 1
+    help_level, help_hint = _resolve_help_level(help) if help else (None, "")
     share = find_share_by_vpath("/" + path)
     if not share:
         if json_mode:
@@ -348,6 +350,22 @@ async def serve_content(
         )
 
     # 常规文件/目录访问
+    def _resp(template: str, ctx: dict, status: int = 200):
+        """返回响应，help 模式下自动附加帮助文档"""
+        if help_level:
+            if json_mode:
+                ctx["help"] = HELP_MD
+                return JSONResponse(content=ctx, status_code=status)
+            # HTML 模式：渲染主模板 → 注入帮助 → 返回合并 HTML
+            from fastapi.responses import HTMLResponse
+            main_html = templates.get_template(template).render(request=request, **ctx)
+            help_html = templates.get_template("help.jinja").render({"level": help_level, "hint": help_hint})
+            combined = main_html.replace("</body>", f'<div style="margin:24px auto;max-width:800px"><hr>{help_html}</div></body>')
+            return HTMLResponse(combined)
+        if json_mode:
+            return JSONResponse(content=ctx, status_code=status)
+        return templates.TemplateResponse(request, template, ctx)
+
     log_entry = {
         "action": "access",
         "path": path,
@@ -397,28 +415,13 @@ async def serve_content(
             )
         log_entry["operation"] = "list_dir"
         write_log(log_entry)
+        ctx = {"type": "directory", "path": path, "entries": entries, "share_name": share.name}
         if json_mode:
-            return JSONResponse(
-                content={
-                    "type": "directory",
-                    "path": path,
-                    "entries": entries,
-                    "share_name": share.name,
-                }
-            )
-        return templates.TemplateResponse(
-            request,
-            "listing.jinja",
-            {
-                "path": path,
-                "entries": entries,
-                "key": key,
-                "share_name": share.name,
-                "can_write": share.permissions.get("write", False),
-                "can_delete": share.permissions.get("delete", False),
-                "can_rename": share.permissions.get("rename", False),
-            },
-        )
+            return _resp(None, ctx)
+        ctx.update({"key": key, "can_write": share.permissions.get("write", False),
+                     "can_delete": share.permissions.get("delete", False),
+                     "can_rename": share.permissions.get("rename", False)})
+        return _resp("listing.jinja", ctx)
     else:
         if not share.permissions.get("read", False):
             write_log({**log_entry, "operation": "read_denied", "status": 403})
@@ -443,17 +446,11 @@ async def serve_content(
                 return FileResponse(abs_path, filename=abs_path.name)
         file_stat = abs_path.stat()
         if json_mode:
-            return JSONResponse(
-                content={
-                    "type": "file",
-                    "path": path,
-                    "filename": abs_path.name,
-                    "size": file_stat.st_size,
-                    "modified": datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
-                    "content": None,
-                    "is_text": None,
-                }
-            )
+            return _resp(None, {
+                "type": "file", "path": path, "filename": abs_path.name,
+                "size": file_stat.st_size,
+                "modified": datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
+            })
         content_preview = ""
         is_text = False
         if file_stat.st_size <= settings.preview_max_size:
@@ -465,24 +462,16 @@ async def serve_content(
                 pass
         view_count = count_resource_views("/" + path)
         line_count = content_preview.count("\n") + 1 if is_text else 0
-        return templates.TemplateResponse(
-            request,
-            "file_display.jinja",
-            {
-                "path": path,
-                "filename": abs_path.name,
-                "size": file_stat.st_size,
-                "line_count": line_count,
-                "modified": datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
-                "content": content_preview,
-                "is_text": is_text,
-                "key": key,
-                "view_count": view_count,
-                "can_write": share.permissions.get("write", False),
-                "can_delete": share.permissions.get("delete", False),
-                "can_rename": share.permissions.get("rename", False),
-            },
-        )
+        return _resp("file_display.jinja", {
+            "path": path, "filename": abs_path.name,
+            "size": file_stat.st_size, "line_count": line_count,
+            "modified": datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
+            "content": content_preview, "is_text": is_text,
+            "key": key, "view_count": view_count,
+            "can_write": share.permissions.get("write", False),
+            "can_delete": share.permissions.get("delete", False),
+            "can_rename": share.permissions.get("rename", False),
+        })
 
 
 @app.put("/s/{path:path}")
@@ -600,10 +589,81 @@ async def query_permission(path: str, key: str = Query(...)):
     }
 
 
+# ------------------- Markdown 帮助文本 -------------------
+HELP_MD = """# AI Agent FTP 服务
+
+本服务为 AI Agent 设计的类 FTP 加密文件服务。
+所有写操作经过 SSRF 防护、路径穿越检测和速率限制。
+
+## 端点
+
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | /s/{path}?key=xxx | 查看文件或目录 | read/list |
+| GET | ?mkdir=1 | 创建目录 | write |
+| GET | ?upload_url=URL | 从 URL 拉取 | write |
+| GET | ?content=数据 | 上传文本(64KB上限) | write |
+| GET | ?delete=1 | 删除 | delete |
+| GET | ?rename_to=新名 | 重命名 | rename |
+| GET | ?move_to=/目标 | 移动 | rename |
+| PUT | /s/{path}?key=xxx | 上传(Body原始内容) | write |
+| POST | /s/{path}?key=xxx | 上传(multipart) | write |
+| DELETE | /s/{path}?key=xxx | 删除 | delete |
+| GET | /perm/{path}?key=xxx | 查询权限 | — |
+
+## 通用参数
+- &raw=1 原始内容  &download=1 下载  &json=1 JSON输出
+
+## 安全限制
+- 上传最大 500MB | content= 最大 64KB
+- upload_url 仅 HTTPS，拦截内网(SSRF防护)
+- 写操作 60 次/分钟(速率限制)
+- 文件名净化，拒绝路径穿越
+
+## 限制 Agent 示例(仅GET)
+```
+mkdir:  GET /s/data?key=abc&mkdir=1
+upload: GET /s/data?key=abc&upload_url=https://example.com/file.zip
+content:GET /s/data/note.txt?key=abc&content=Hello+World
+delete: GET /s/data/old.txt?key=abc&delete=1
+rename: GET /s/data/old.txt?key=abc&rename_to=new.txt
+perm:   GET /perm/data?key=abc
+```
+
+## 管理
+- /admin 管理界面  /admin/stats 统计  /health 健康检查
+"""
+
+
+def _resolve_help_level(level: str) -> tuple[str, str]:
+    """校验 help level 参数，返回 (有效level, 提示消息)"""
+    valid = {"basic", "full", "md", "1", "2"}
+    if level in valid:
+        return (level, "")
+    # 别名映射
+    alias = {"1": "basic", "2": "full"}
+    if level in alias:
+        return (alias[level], "")
+    # 无效值：使用默认 basic，提示取值范围
+    hint = f"Invalid help level '{level}', valid: basic, full, md (or 1, 2). Using 'basic'."
+    return ("basic", hint)
+
+
 # ------------------- 帮助页 -------------------
-@app.get("/help", response_class=HTMLResponse)
-async def help_page(request: Request, level: str = "basic"):
-    return templates.TemplateResponse(request, "help.jinja", {"level": level})
+@app.get("/help")
+async def help_page(
+    request: Request,
+    level: str = "basic",
+    format: str = Query("html"),
+):
+    cleaned, hint = _resolve_help_level(level)
+    if cleaned in ("md",):
+        format = "md"
+    context = {"level": cleaned, "hint": hint}
+    if format == "md":
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(HELP_MD)
+    return templates.TemplateResponse(request, "help.jinja", context)
 
 
 # ------------------- 启动入口 -------------------
