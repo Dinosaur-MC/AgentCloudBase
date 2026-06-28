@@ -42,7 +42,7 @@ ADMIN_KEY = os.getenv("ADMIN_KEY", "admin123")
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
-CONFIG_FILE = "config.json"
+CONFIG_FILE = os.getenv("CONFIG_FILE", "config.json")
 
 # ------------------- 日志配置 -------------------
 LOG_DIR = "logs"                     # 日志存放目录
