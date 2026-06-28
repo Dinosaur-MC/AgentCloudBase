@@ -357,7 +357,7 @@ async def serve_content(
                 "content": content_preview if is_text else None, "is_text": is_text,
             })
         view_count = count_resource_views("/" + path)
-        line_count = content_preview.count("\n") if is_text else 0
+        line_count = content_preview.count("\n") + 1 if is_text else 0
         return templates.TemplateResponse(request, "file_display.html", {
             "path": path, "filename": abs_path.name,
             "size": file_stat.st_size, "line_count": line_count,
