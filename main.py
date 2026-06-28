@@ -352,7 +352,7 @@ async def serve_content(
         "action": "access",
         "path": path,
         "ip": request.client.host,
-        "key": key[:4] + "***",
+        "key": mask_key(key),
         "operation": "unknown",
     }
     if not abs_path.exists():
@@ -442,6 +442,18 @@ async def serve_content(
             except UnicodeDecodeError:
                 return FileResponse(abs_path, filename=abs_path.name)
         file_stat = abs_path.stat()
+        if json_mode:
+            return JSONResponse(
+                content={
+                    "type": "file",
+                    "path": path,
+                    "filename": abs_path.name,
+                    "size": file_stat.st_size,
+                    "modified": datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
+                    "content": None,
+                    "is_text": None,
+                }
+            )
         content_preview = ""
         is_text = False
         if file_stat.st_size <= settings.preview_max_size:
@@ -451,18 +463,6 @@ async def serve_content(
                 is_text = True
             except (UnicodeDecodeError, PermissionError, MemoryError):
                 pass
-        if json_mode:
-            return JSONResponse(
-                content={
-                    "type": "file",
-                    "path": path,
-                    "filename": abs_path.name,
-                    "size": file_stat.st_size,
-                    "modified": datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
-                    "content": content_preview if is_text else None,
-                    "is_text": is_text,
-                }
-            )
         view_count = count_resource_views("/" + path)
         line_count = content_preview.count("\n") + 1 if is_text else 0
         return templates.TemplateResponse(

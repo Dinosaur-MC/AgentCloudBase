@@ -14,6 +14,7 @@ from typing import List, Optional
 from pathlib import Path
 from collections import defaultdict
 from urllib.parse import urlparse
+import threading
 
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -70,23 +71,28 @@ def _cleanup_old_logs():
 
 
 _cached_shard: Path | None = None
+_shard_lock = threading.Lock()
 
 
 def _current_shard_path() -> Path:
     global _cached_shard
     if _cached_shard is not None and _cached_shard.exists() and _cached_shard.stat().st_size < settings.log_max_size:
         return _cached_shard
-    _ensure_log_dir()
-    shards = _list_log_shards()
-    if not shards:
-        _cached_shard = Path(settings.log_dir) / f"{settings.log_filename_prefix}{settings.log_file_ext}"
-    else:
-        latest = shards[-1]
-        if latest.stat().st_size < settings.log_max_size:
-            _cached_shard = latest
+    with _shard_lock:
+        # 双重检查：拿到锁后可能已有其他线程更新了缓存
+        if _cached_shard is not None and _cached_shard.exists() and _cached_shard.stat().st_size < settings.log_max_size:
+            return _cached_shard
+        _ensure_log_dir()
+        shards = _list_log_shards()
+        if not shards:
+            _cached_shard = Path(settings.log_dir) / f"{settings.log_filename_prefix}{settings.log_file_ext}"
         else:
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            _cached_shard = Path(settings.log_dir) / f"{settings.log_filename_prefix}_{ts}{settings.log_file_ext}"
+            latest = shards[-1]
+            if latest.stat().st_size < settings.log_max_size:
+                _cached_shard = latest
+            else:
+                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                _cached_shard = Path(settings.log_dir) / f"{settings.log_filename_prefix}_{ts}{settings.log_file_ext}"
     return _cached_shard
 
 
@@ -290,7 +296,7 @@ def require_write_permission(share: ShareConfig, path: str, ip: str, key: str, j
     if not check_share_permission(share, "write"):
         write_log({"action": "upload_denied", "path": path, "ip": ip, "key": mask_key(key), "reason": "permission_denied"})
         return error_response("Write permission denied", 403, json_mode)
-    if not write_rate_limiter.check(ip):
+    if not write_rate_limiter.check(f"{ip}:{key[:4] if key else ''}"):
         write_log({"action": "upload_denied", "path": path, "ip": ip, "key": mask_key(key), "reason": "rate_limited"})
         return error_response("Rate limit exceeded. Try again later.", 429, json_mode)
     return None
@@ -332,7 +338,7 @@ async def handle_upload_url(share, abs_path, url, filename, path, ip, key, json_
         return err
     validate_upload_url(url)
     if not filename:
-        filename = os.path.basename(urlparse(url).path) or "download"
+        filename = os.path.basename(urlparse(url).path) or f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}.bin"
     filename = validate_filename(filename)
     target = abs_path if abs_path.is_dir() else abs_path.parent
     final_path = target / filename
@@ -375,7 +381,7 @@ async def handle_content_upload(share, abs_path, content_data, filename, path, i
     if "\0" in encoded:
         return error_response("Binary content not allowed via content parameter", 400, json_mode)
     if not filename:
-        filename = os.path.basename(path.rstrip("/")) or "untitled.txt"
+        filename = os.path.basename(path.rstrip("/")) or f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
     filename = validate_filename(filename)
     target = abs_path if abs_path.is_dir() else abs_path.parent
     final_path = target / filename
@@ -445,7 +451,11 @@ async def handle_rename(share, abs_path, new_name, path, ip, key, move_target=No
         rel = str(final_path.relative_to(Path(share.real_path).resolve()))
         write_log({"action": "file_renamed", "path": path, "dest": rel, "ip": ip, "key": mask_key(key)})
         return success_response(f"Renamed to: {final_path.name}", {"from": path, "to": rel}, json_mode)
-    except (OSError, PermissionError) as e:
+    except OSError as e:
+        if getattr(e, "winerror", None) == 17 or getattr(e, "errno", None) == 18:  # EXDEV
+            return error_response("Cannot move across filesystem boundaries. Use copy+delete instead.", 400, json_mode)
+        return error_response(str(e), 500, json_mode)
+    except PermissionError as e:
         return error_response(str(e), 500, json_mode)
 
 
