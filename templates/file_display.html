@@ -34,7 +34,7 @@
     <div class="card">
       <div class="card-header">
         <h2>📄 {{ filename }}</h2>
-        <div class="meta">大小: {{ size }} bytes · 修改时间: {{ modified }} · 访问 {{ view_count }} 次</div>
+        <div class="meta">大小: {{ size }} bytes · 修改时间: {{ modified }}</div>
       </div>
       {% if can_write or can_delete or can_rename %}
       <div class="toolbar">
@@ -71,9 +71,13 @@
         {% endif %}
       </div>
       <div class="card-footer">
-        <a href="/help?level=basic">帮助</a>
+        {% if is_text and line_count > 0 %}
+        <span>{{ line_count }} 行</span>
         <span style="color:var(--muted)">·</span>
-        <span>访问密钥: {{ key[:4] }}***</span>
+        {% endif %}
+        <span>访问 {{ view_count }} 次</span>
+        <span style="color:var(--muted)">·</span>
+        <a href="/help?level=basic">帮助</a>
       </div>
     </div>
   </div>
