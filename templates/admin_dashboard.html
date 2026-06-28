@@ -1,49 +1,48 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head><title>管理面板 — AI Agent FTP</title>
+<head><title>管理面板</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root { --primary: #2563eb; --bg: #f1f5f9; --card: #fff; --border: #e2e8f0; --text: #1e293b; --muted: #64748b; --success: #16a34a; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 24px; }
-  .container { max-width: 900px; margin: 0 auto; }
-  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-  .header h1 { font-size: 24px; font-weight: 600; }
-  .nav a { color: var(--primary); text-decoration: none; font-size: 14px; margin-left: 16px; }
-  .nav a:hover { text-decoration: underline; }
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
-  .stat-card { background: var(--card); border-radius: 10px; padding: 16px 20px; text-align: center; border: 1px solid var(--border); }
-  .stat-card .num { font-size: 28px; font-weight: 700; color: var(--primary); }
-  .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
-  .section { background: var(--card); border-radius: 10px; border: 1px solid var(--border); padding: 20px; margin-bottom: 20px; }
-  .section h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-  .share-item { padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
-  .share-item:last-child { border-bottom: none; }
-  .share-item strong { font-size: 15px; }
-  .share-meta { font-size: 13px; color: var(--muted); margin: 4px 0; }
-  .perms { font-size: 12px; color: var(--muted); }
-  .perms .on { color: var(--success); font-weight: 600; }
-  .perms .off { color: #94a3b8; }
-  .btn-sm { padding: 4px 12px; font-size: 12px; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; color: #dc2626; }
-  .btn-sm:hover { background: #fef2f2; }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .form-grid label { font-size: 13px; font-weight: 500; display: block; margin-bottom: 4px; }
-  .form-grid input { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; outline: none; }
-  .form-grid input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
-  .form-full { grid-column: 1 / -1; }
-  .checkbox-group { display: flex; gap: 12px; flex-wrap: wrap; }
-  .checkbox-group label { font-weight: normal; display: flex; align-items: center; gap: 4px; cursor: pointer; }
-  .btn-primary { padding: 8px 20px; background: var(--primary); color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; }
-  .btn-primary:hover { background: #1d4ed8; }
+  :root{--primary:#2563eb;--bg:#f1f5f9;--card:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b;--success:#16a34a}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding:24px}
+  .container{max-width:900px;margin:0 auto}
+  .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+  .header h1{font-size:24px;font-weight:600}
+  .nav a{color:var(--primary);text-decoration:none;font-size:14px;margin-left:16px}
+  .nav a:hover{text-decoration:underline}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px}
+  .stat-card{background:var(--card);border-radius:10px;padding:16px;text-align:center;border:1px solid var(--border)}
+  .stat-card .num{font-size:28px;font-weight:700;color:var(--primary)}
+  .stat-card .label{font-size:12px;color:var(--muted);margin-top:4px}
+  .section{background:var(--card);border-radius:10px;border:1px solid var(--border);padding:20px;margin-bottom:20px}
+  .section h3{font-size:16px;font-weight:600;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .share-item{padding:12px 0;border-bottom:1px solid #f1f5f9;font-size:14px}
+  .share-item:last-child{border-bottom:none}
+  .share-meta{font-size:12px;color:var(--muted);margin:4px 0}
+  .perms{font-size:12px;color:var(--muted)}
+  .perms .on{color:var(--success);font-weight:600}
+  .perms .off{color:#94a3b8}
+  .btn-sm{padding:3px 10px;font-size:12px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;color:#dc2626;margin-left:8px}
+  .btn-sm:hover{background:#fef2f2}
+  .btn-primary{padding:8px 20px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer}
+  .btn-primary:hover{background:#1d4ed8}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .form-grid label{font-size:13px;font-weight:500;display:block;margin-bottom:4px}
+  .form-grid input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none}
+  .form-grid input:focus{border-color:var(--primary)}
+  .form-full{grid-column:1/-1}
+  .checkbox-group{display:flex;gap:12px;flex-wrap:wrap}
+  .checkbox-group label{font-weight:400;display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px}
 </style></head>
 <body>
   <div class="container">
     <div class="header">
       <h1>管理面板</h1>
       <div class="nav">
-        <a href="/admin/logs">📋 日志</a>
-        <a href="/admin/stats">📊 统计</a>
-        <a href="/admin/logout">🚪 登出</a>
+        <a href="/admin/logs">日志</a>
+        <a href="/admin/stats">统计</a>
+        <a href="/admin/logout">登出</a>
       </div>
     </div>
 
@@ -57,19 +56,19 @@
     {% endif %}
 
     <div class="section">
-      <h3>📁 共享目录</h3>
+      <h3>共享目录</h3>
       {% for share in shares %}
       <div class="share-item">
         <strong>{{ share.name }}</strong>
-        <span style="font-size:13px;color:var(--muted)">{{ share.virtual_path }} → {{ share.real_path }}</span>
+        <span style="font-size:12px;color:var(--muted)"> {{ share.virtual_path }} &rarr; {{ share.real_path }}</span>
         <div class="share-meta">密钥: {{ share.access_key }}</div>
         <div class="perms">
-          list=<span class="{% if share.permissions.list %}on">✓{% else %}off">✗{% endif %}</span>
-          read=<span class="{% if share.permissions.read %}on">✓{% else %}off">✗{% endif %}</span>
-          write=<span class="{% if share.permissions.write %}on">✓{% else %}off">✗{% endif %}</span>
-          delete=<span class="{% if share.permissions.delete %}on">✓{% else %}off">✗{% endif %}</span>
-          rename=<span class="{% if share.permissions.rename %}on">✓{% else %}off">✗{% endif %}</span>
-          <form method="post" action="/admin/shares/delete/{{ share.id }}" style="display:inline;margin-left:8px;">
+          list=<span class="{% if share.permissions.list %}on">yes{% else %}off">no{% endif %}</span>
+          read=<span class="{% if share.permissions.read %}on">yes{% else %}off">no{% endif %}</span>
+          write=<span class="{% if share.permissions.write %}on">yes{% else %}off">no{% endif %}</span>
+          delete=<span class="{% if share.permissions.delete %}on">yes{% else %}off">no{% endif %}</span>
+          rename=<span class="{% if share.permissions.rename %}on">yes{% else %}off">no{% endif %}</span>
+          <form method="post" action="/admin/shares/delete/{{ share.id }}" style="display:inline">
             <button class="btn-sm" type="submit">删除</button>
           </form>
         </div>
@@ -80,25 +79,25 @@
     </div>
 
     <div class="section">
-      <h3>➕ 添加新共享</h3>
+      <h3>添加新共享</h3>
       <form method="post" action="/admin/shares/add">
         <div class="form-grid">
-          <div><label>名称</label><input name="name" required placeholder="My Share"></div>
+          <div><label>名称</label><input name="name" required></div>
           <div><label>虚拟路径</label><input name="virtual_path" required placeholder="/mydata"></div>
           <div class="form-full"><label>真实路径</label><input name="real_path" required placeholder="/home/user/data"></div>
           <div class="form-full">
             <label>权限</label>
             <div class="checkbox-group">
-              <label><input type="checkbox" name="list_perm" checked> 列表</label>
-              <label><input type="checkbox" name="read_perm" checked> 读取</label>
-              <label><input type="checkbox" name="write_perm"> 写入</label>
-              <label><input type="checkbox" name="delete_perm"> 删除</label>
-              <label><input type="checkbox" name="rename_perm"> 重命名</label>
+              <label><input type="checkbox" name="list_perm" checked> list</label>
+              <label><input type="checkbox" name="read_perm" checked> read</label>
+              <label><input type="checkbox" name="write_perm"> write</label>
+              <label><input type="checkbox" name="delete_perm"> delete</label>
+              <label><input type="checkbox" name="rename_perm"> rename</label>
             </div>
           </div>
-          <div class="form-full"><label>访问密钥</label><input name="access_key" required placeholder="Agent 访问使用的密钥"></div>
+          <div class="form-full"><label>访问密钥</label><input name="access_key" required></div>
         </div>
-        <p style="margin-top:16px;"><button class="btn-primary" type="submit">添加共享</button></p>
+        <p style="margin-top:16px"><button class="btn-primary" type="submit">添加共享</button></p>
       </form>
     </div>
   </div>

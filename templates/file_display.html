@@ -3,80 +3,74 @@
 <head><title>{{ filename }}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root { --primary: #2563eb; --bg: #f8fafc; --card: #fff; --border: #e2e8f0; --text: #1e293b; --muted: #64748b; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 24px; }
-  .container { max-width: 900px; margin: 0 auto; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-  .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); background: #f8fafc; }
-  .card-header h2 { font-size: 16px; font-weight: 600; word-break: break-all; }
-  .card-header .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .toolbar { padding: 10px 20px; border-bottom: 1px solid var(--border); background: #fafbfc; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .toolbar form { display: inline-flex; align-items: center; gap: 6px; }
-  .toolbar input { padding: 4px 8px; border: 1px solid var(--border); border-radius: 5px; font-size: 12px; outline: none; }
-  .toolbar input:focus { border-color: var(--primary); }
-  .toolbar button, .toolbar a button { padding: 4px 12px; background: var(--primary); color: #fff; border: none; border-radius: 5px; font-size: 12px; cursor: pointer; }
-  .toolbar button:hover { background: #1d4ed8; }
-  .toolbar .btn-danger { background: #dc2626; }
-  .toolbar .btn-danger:hover { background: #b91c1c; }
-  .toolbar .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
-  .toolbar .btn-outline:hover { background: #f1f5f9; }
-  .content-area { padding: 0; overflow-x: auto; }
-  .content-area pre { padding: 20px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; margin: 0; }
-  .binary-notice { padding: 40px; text-align: center; color: var(--muted); }
-  .binary-notice a { color: var(--primary); text-decoration: none; }
-  .card-footer { padding: 10px 20px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); display: flex; gap: 16px; }
-  .card-footer a { color: var(--primary); text-decoration: none; }
-  .card-footer a:hover { text-decoration: underline; }
+  :root{--primary:#2563eb;--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding:24px}
+  .container{max-width:900px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  .ch{padding:14px 20px;border-bottom:1px solid var(--border);background:#f8fafc}
+  .ch h2{font-size:16px;font-weight:600;word-break:break-all}
+  .ch .meta{font-size:12px;color:var(--muted);margin-top:2px}
+  .toolbar{padding:10px 20px;border-bottom:1px solid var(--border);background:#fafbfc;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
+  .toolbar form{display:inline-flex;align-items:center;gap:6px}
+  .toolbar input{padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px;outline:none}
+  .toolbar input:focus{border-color:var(--primary)}
+  .toolbar button,.toolbar a button{padding:4px 12px;background:var(--primary);color:#fff;border:none;border-radius:5px;font-size:12px;cursor:pointer}
+  .toolbar button:hover{background:#1d4ed8}
+  .toolbar .dng{background:#dc2626}
+  .toolbar .dng:hover{background:#b91c1c}
+  .toolbar .out{background:transparent;color:var(--text);border:1px solid var(--border)}
+  .toolbar .out:hover{background:#f1f5f9}
+  .ca{padding:0;overflow-x:auto}
+  .ca pre{padding:20px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-all;margin:0}
+  .bn{padding:40px;text-align:center;color:var(--muted)}
+  .bn a{color:var(--primary);text-decoration:none}
+  .cf{padding:8px 20px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);display:flex;gap:12px}
+  .cf a{color:var(--primary);text-decoration:none}
 </style></head>
 <body>
   <div class="container">
     <div class="card">
-      <div class="card-header">
-        <h2>📄 {{ filename }}</h2>
-        <div class="meta">大小: {{ size }} bytes · 修改时间: {{ modified }}</div>
+      <div class="ch">
+        <h2>{{ filename }}</h2>
+        <div class="meta">{{ size }} B | {{ modified }}</div>
       </div>
       {% if can_write or can_delete or can_rename %}
       <div class="toolbar">
         {% if can_write %}
         <form method="post" action="/s/{{ path }}?key={{ key }}" enctype="multipart/form-data">
           <input type="file" name="file" required>
-          <button type="submit">替换上传</button>
+          <button type="submit">替换</button>
         </form>
         {% endif %}
         {% if can_delete %}
-        <a href="/s/{{ path }}?key={{ key }}&delete=1" onclick="return confirm('确认删除 {{ filename }}？')"><button class="btn-danger">🗑 删除</button></a>
+        <a href="/s/{{ path }}?key={{ key }}&delete=1" onclick="return confirm('删除 {{ filename }}？')"><button class="dng">删除</button></a>
         {% endif %}
         {% if can_rename %}
         <form method="get" action="/s/{{ path }}">
           <input name="key" type="hidden" value="{{ key }}">
           <input name="rename_to" placeholder="新名称" required>
-          <button type="submit">✏️ 重命名</button>
+          <button type="submit">重命名</button>
         </form>
         {% endif %}
-        <a href="/s/{{ path }}?key={{ key }}&raw=1"><button class="btn-outline">📝 原始</button></a>
-        <a href="/s/{{ path }}?key={{ key }}&download=1"><button class="btn-outline">⬇ 下载</button></a>
-        <a href="/s/{{ path.rsplit('/', 1)[0] }}?key={{ key }}"><button class="btn-outline">📁 上级目录</button></a>
+        <a href="/s/{{ path }}?key={{ key }}&raw=1"><button class="out">原始</button></a>
+        <a href="/s/{{ path }}?key={{ key }}&download=1"><button class="out">下载</button></a>
+        <a href="/s/{{ path.rsplit('/',1)[0] }}?key={{ key }}"><button class="out">上级</button></a>
       </div>
       {% endif %}
-      <div class="content-area">
+      <div class="ca">
         {% if is_text %}
         <pre>{{ content }}</pre>
         {% else %}
-        <div class="binary-notice">
-          <p style="font-size:40px;margin-bottom:12px;">🗄️</p>
-          <p>二进制文件，无法直接预览</p>
-          <p style="margin-top:8px;"><a href="/s/{{ path }}?key={{ key }}&download=1">⬇ 点击下载</a></p>
+        <div class="bn">
+          <p>二进制文件，无法预览</p>
+          <p style="margin-top:8px"><a href="/s/{{ path }}?key={{ key }}&download=1">点击下载</a></p>
         </div>
         {% endif %}
       </div>
-      <div class="card-footer">
-        {% if is_text %}
-        <span>{{ line_count }} 行</span>
-        <span style="color:var(--muted)">·</span>
-        {% endif %}
-        <span>访问 {{ view_count }} 次</span>
-        <span style="color:var(--muted)">·</span>
+      <div class="cf">
+        {% if is_text %}<span>{{ line_count }} 行</span><span>|</span>{% endif %}
+        <span>访问 {{ view_count }} 次</span><span>|</span>
         <a href="/help?level=basic">帮助</a>
       </div>
     </div>
