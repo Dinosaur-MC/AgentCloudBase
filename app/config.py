@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     write_rate_limit: int = 60                  # 每分钟写操作上限
     preview_max_size: int = 512 * 1024          # 预览最大文件大小 (512 KB)
 
-    model_config = {"env_prefix": ""}
+    model_config = {"env_file": ".env"}
 
 
 settings = Settings()
