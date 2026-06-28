@@ -57,7 +57,7 @@
         <li>
           <a href="/s/{{ path.rstrip('/') }}/{{ entry.name }}?key={{ key }}">{{ entry.name }}</a>
           <div class="s">
-            <span>{% if entry.type=="file" %}{{ entry.size }}B{% else %}dir{% endif %}</span>
+            <span>{% if entry.type=="file" %}{{ entry.size|format_size }}{% else %}dir{% endif %}</span>
             {% if can_delete %}
             <a href="/s/{{ path.rstrip('/') }}/{{ entry.name }}?key={{ key }}&delete=1" onclick="return confirm('删除 {{ entry.name }}？')" class="del">del</a>
             {% endif %}

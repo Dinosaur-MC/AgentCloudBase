@@ -45,20 +45,34 @@ TEMPLATES_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
+# ------------------- Jinja2 自定义过滤器 -------------------
+def format_size(value: int) -> str:
+    for unit in ("B", "KB", "MB", "GB"):
+        if abs(value) < 1024:
+            return f"{value:.1f}{unit}" if isinstance(value, float) else f"{value}{unit}"
+        value /= 1024
+    return f"{value:.1f}TB"
+
+templates.env.filters["format_size"] = format_size
+
+
 # ------------------- 请求日志中间件 -------------------
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.time()
     response = await call_next(request)
     duration_ms = int((time.time() - start) * 1000)
-    write_log({
-        "action": "request",
-        "method": request.method,
-        "path": request.url.path,
-        "status": response.status_code,
-        "duration_ms": duration_ms,
-        "ip": request.client.host if request.client else "unknown",
-    })
+    path = request.url.path
+    # 管理页面的 GET 请求不记日志（登录/登出/配置变更由各自路由记录）
+    if not (request.method == "GET" and path.startswith("/admin")):
+        write_log({
+            "action": "request",
+            "method": request.method,
+            "path": path,
+            "status": response.status_code,
+            "duration_ms": duration_ms,
+            "ip": request.client.host if request.client else "unknown",
+        })
     return response
 
 
@@ -427,6 +441,22 @@ async def serve_content_delete(
         raw=0, download=0, json=json, mkdir=0,
         upload_url=None, content=None, delete=1, rename_to=None, move_to=None,
     )
+
+
+# ------------------- 权限查询 -------------------
+@app.get("/perm/{path:path}")
+async def query_permission(path: str, key: str = Query(...)):
+    """查询指定路径的访问权限（无需对应权限即可查询）"""
+    share = find_share_by_vpath("/" + path)
+    if not share:
+        return JSONResponse(status_code=404, content={"success": False, "error": "No share matched"})
+    if not validate_access_key(share, key):
+        return JSONResponse(status_code=403, content={"success": False, "error": "Invalid access key"})
+    return {
+        "path": "/" + path,
+        "share_name": share.name,
+        "permissions": share.permissions,
+    }
 
 
 # ------------------- 帮助页 -------------------

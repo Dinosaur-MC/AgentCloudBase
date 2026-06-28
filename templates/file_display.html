@@ -33,7 +33,7 @@
     <div class="card">
       <div class="ch">
         <h2>{{ filename }}</h2>
-        <div class="meta">{{ size }} B | {{ modified }}</div>
+        <div class="meta">{{ size|format_size }} | {{ modified }}</div>
       </div>
       {% if can_write or can_delete or can_rename %}
       <div class="toolbar">
