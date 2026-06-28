@@ -249,10 +249,13 @@ def get_absolute_path(share: ShareConfig, request_path: str) -> Path:
         relative = request_path[len(cfg_vpath):]
     safe_relative = os.path.normpath(relative).lstrip("/")
     real_root = os.path.realpath(share.real_path)
-    real_path = os.path.realpath(os.path.join(real_root, safe_relative))
-    if not real_path.startswith(real_root + os.sep) and real_path != real_root:
+    real_path_str = os.path.realpath(os.path.join(real_root, safe_relative))
+    # Windows: 统一大小写和分隔符后再比较，避免 E: vs e: 或 / vs \ 导致误判
+    root_norm = os.path.normcase(os.path.normpath(real_root))
+    path_norm = os.path.normcase(os.path.normpath(real_path_str))
+    if not path_norm.startswith(root_norm + os.sep) and path_norm != root_norm:
         raise HTTPException(status_code=403, detail="Access denied")
-    return Path(real_path)
+    return Path(real_path_str)
 
 
 # ==================== 写操作安全检查链 ====================
