@@ -343,12 +343,13 @@ async def serve_content(
         file_stat = abs_path.stat()
         content_preview = ""
         is_text = False
-        try:
-            with open(abs_path, "r", encoding="utf-8") as f:
-                content_preview = f.read()
-            is_text = True
-        except (UnicodeDecodeError, PermissionError):
-            pass
+        if file_stat.st_size <= settings.preview_max_size:
+            try:
+                with open(abs_path, "r", encoding="utf-8") as f:
+                    content_preview = f.read()
+                is_text = True
+            except (UnicodeDecodeError, PermissionError, MemoryError):
+                pass
         if json_mode:
             return JSONResponse(content={
                 "type": "file", "path": path, "filename": abs_path.name,
