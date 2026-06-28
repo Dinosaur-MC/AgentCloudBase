@@ -6,7 +6,7 @@ import hashlib
 import time
 from datetime import datetime
 
-from fastapi import APIRouter, Request, HTTPException, Query, Form, status
+from fastapi import APIRouter, Request, Depends, HTTPException, Query, Form, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.config import settings
@@ -16,6 +16,7 @@ from app.utils import (
     create_jwt_token, get_admin_from_cookie,
 )
 from app.common import templates
+from app.deps import require_admin
 
 router = APIRouter(tags=["admin"])
 
@@ -67,10 +68,8 @@ async def add_share(
     access_key: str = Form(...),
     enabled: bool = Form(True),
     access_key_expires: str = Form(""),
+    admin=Depends(require_admin),
 ):
-    admin = get_admin_from_cookie(request)
-    if not admin:
-        raise HTTPException(status_code=401, detail="Unauthorized")
     configs = load_config()
     new_id = hashlib.md5(f"{name}{virtual_path}{time.time()}".encode()).hexdigest()[:8]
     new_share = ShareConfig(
@@ -87,10 +86,7 @@ async def add_share(
 
 
 @router.post("/admin/shares/delete/{share_id}")
-async def delete_share(request: Request, share_id: str):
-    admin = get_admin_from_cookie(request)
-    if not admin:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+async def delete_share(request: Request, share_id: str, admin=Depends(require_admin)):
     configs = load_config()
     new_configs = [c for c in configs if c.id != share_id]
     if len(new_configs) == len(configs):
@@ -106,10 +102,8 @@ async def update_share(
     enabled: bool = Form(False),
     access_key: str = Form(""),
     access_key_expires: str = Form(""),
+    admin=Depends(require_admin),
 ):
-    admin = get_admin_from_cookie(request)
-    if not admin:
-        raise HTTPException(status_code=401, detail="Unauthorized")
     configs = load_config()
     for share in configs:
         if share.id == share_id:
@@ -124,10 +118,7 @@ async def update_share(
 
 
 @router.get("/admin/stats")
-async def admin_stats(request: Request):
-    admin = get_admin_from_cookie(request)
-    if not admin:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+async def admin_stats(admin=Depends(require_admin)):
     return compute_stats()
 
 
@@ -141,10 +132,8 @@ async def view_logs(
     keyword: str = Query(None),
     date_from: str = Query(None),
     date_to: str = Query(None),
+    admin=Depends(require_admin),
 ):
-    admin = get_admin_from_cookie(request)
-    if not admin:
-        raise HTTPException(status_code=401, detail="Unauthorized")
     all_logs = iter_all_logs()
     if action:
         all_logs = [l for l in all_logs if l.get("action") == action]
