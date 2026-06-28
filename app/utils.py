@@ -21,7 +21,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from jose import JWTError, jwt
 
-from config import settings
+from app.config import settings
 
 
 # ==================== 数据模型 ====================
