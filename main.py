@@ -6,6 +6,7 @@ import time
 import hashlib
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import (
     FastAPI,
@@ -279,10 +280,17 @@ async def serve_content(
     delete: int = Query(0),
     rename_to: str = Query(None),
     move_to: str = Query(None),
+    filename: str = Query(None),
     help: str = Query(None),
 ):
     json_mode = json == 1
     help_level, help_hint = _resolve_help_level(help) if help else (None, "")
+
+    # 参数互斥检查
+    ops = sum([1 for v in (mkdir == 1, bool(upload_url), content is not None, delete == 1, bool(rename_to), bool(move_to)) if v])
+    if ops > 1:
+        return error_response("Conflicting parameters: only one operation allowed per request (mkdir/upload_url/content/delete/rename_to/move_to)", 400, json_mode)
+
     share = find_share_by_vpath("/" + path)
     if not share:
         if json_mode:
@@ -314,12 +322,12 @@ async def serve_content(
             share, abs_path, path, request.client.host, key, json_mode
         )
     if upload_url:
-        fn = os.path.basename(path.rstrip("/")) or ""
+        fn = filename or os.path.basename(urlparse(upload_url).path) or ""
         return await handle_upload_url(
             share, abs_path, upload_url, fn, path, request.client.host, key, json_mode
         )
     if content is not None:
-        fn = os.path.basename(path.rstrip("/")) or ""
+        fn = filename or os.path.basename(path.rstrip("/")) or ""
         return await handle_content_upload(
             share, abs_path, content, fn, path, request.client.host, key, json_mode
         )
@@ -510,6 +518,7 @@ async def serve_content_post(
     mkdir: int = Query(0),
     json: int = Query(0, alias="json"),
     file: UploadFile = File(None),
+    filename: str = Query(None),
 ):
     json_mode = json == 1
     if file:
@@ -528,7 +537,7 @@ async def serve_content_post(
             return error_response("Invalid access key", 403, json_mode)
         abs_path = get_absolute_path(share, "/" + path)
         return await handle_multipart_upload(
-            request, share, abs_path, path, key, file, json_mode
+            request, share, abs_path, path, key, file, json_mode, filename
         )
     return await serve_content(
         request=request,

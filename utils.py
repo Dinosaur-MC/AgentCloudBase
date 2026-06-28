@@ -189,8 +189,16 @@ def validate_filename(name: str) -> str:
         raise HTTPException(status_code=400, detail="Filename cannot contain path separators")
     if "\0" in name:
         raise HTTPException(status_code=400, detail="Invalid filename")
+    if name.startswith(".") or name.endswith("."):
+        raise HTTPException(status_code=400, detail="Filename cannot start or end with a dot")
+    # 替换 Windows 保留字符
     cleaned = re.sub(r'[<>:"|?*]', "_", name)
-    return unicodedata.normalize("NFC", cleaned)
+    cleaned = unicodedata.normalize("NFC", cleaned).strip()
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="Filename is empty after sanitization")
+    if len(cleaned) > 255:
+        raise HTTPException(status_code=400, detail="Filename too long (max 255 chars)")
+    return cleaned
 
 
 def validate_upload_url(url: str) -> str:
@@ -411,13 +419,16 @@ async def handle_delete(share, abs_path, path, ip, key, json_mode=False):
         except (OSError, PermissionError) as e:
             return error_response(str(e), 500, json_mode)
     try:
-        if abs_path.is_dir():
+        is_sym = abs_path.is_symlink()
+        if is_sym:
+            abs_path.unlink()
+        elif abs_path.is_dir():
             abs_path.rmdir()
         else:
             abs_path.unlink()
-        is_dir = abs_path.is_dir()
-        entry_type = "directory" if is_dir else "file"
-        write_log({"action": "dir_deleted" if is_dir else "file_deleted", "path": path, "type": entry_type, "ip": ip, "key": mask_key(key)})
+        entry_type = "symlink" if is_sym else ("directory" if abs_path.is_dir() else "file")
+        was_dir = abs_path.is_dir() and not is_sym
+        write_log({"action": "dir_deleted" if was_dir else "file_deleted", "path": path, "type": entry_type, "ip": ip, "key": mask_key(key)})
         return success_response(f"Deleted: {path}", json_mode=json_mode)
     except (OSError, PermissionError) as e:
         return error_response(str(e), 500, json_mode)
@@ -481,11 +492,13 @@ async def handle_put_upload(request, share, abs_path, path, key, json_mode, file
     return success_response(f"File uploaded: {abs_path.name}", {"name": abs_path.name, "size": len(body)}, json_mode)
 
 
-async def handle_multipart_upload(request, share, abs_path, path, key, file, json_mode=False):
+async def handle_multipart_upload(request, share, abs_path, path, key, file, json_mode=False, filename=None):
     err = require_write_permission(share, path, request.client.host, key, json_mode)
     if err:
         return err
-    filename = validate_filename(file.filename or "upload")
+    if not filename:
+        filename = file.filename or "upload"
+    filename = validate_filename(filename)
     if abs_path.is_dir():
         final_path = abs_path / filename
     else:
