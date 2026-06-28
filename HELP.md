@@ -17,6 +17,8 @@ AI Web FTP is an HTTP-based file service designed for LLM agents. All file opera
 - Your agent is **limited to GET requests** only (no headers, no body)
 - Your agent needs to **check permissions** before attempting an operation
 
+**Important:** Only one operation per request. Conflicting parameters (`mkdir` + `delete`, etc.) return 400.
+
 **Do NOT use when:** You need real-time sync, WebDAV compatibility, or multi-user authentication beyond a shared access key.
 
 ## Core Pattern
@@ -69,6 +71,7 @@ GET /perm/{path}?key=xxx
 | `raw` | int (0/1) | Return raw file content as plain text |
 | `download` | int (0/1) | Force file download |
 | `help` | string | Attach documentation: basic, full, md |
+| `filename` | string | Override filename for upload (upload_url/content/PUT/POST) |
 
 ### Security Constraints
 
@@ -99,7 +102,10 @@ GET /s/data/readme.txt?key=abc123&json=1
 ```
 GET /s/data/uploads?key=abc123&upload_url=https://example.com/file.zip
 ```
-The server downloads the file from the URL and saves it to the target path.
+The server downloads the file from the URL and saves it. Use `&filename=out.zip` to override the saved filename:
+```
+GET /s/data/uploads?key=abc123&upload_url=https://example.com/download&filename=package.zip
+```
 
 ### Pattern 3: Upload text content (GET-only agent)
 
@@ -150,8 +156,9 @@ With `?json=1`, errors return `{"success": false, "error": "...", "code": N}`.
 
 ## Common Mistakes
 
-1. **Missing trailing slash for directory root** — `/s/test?key=abc` works, but `/s/test/?key=abc` is also valid
-2. **Cross-share move** — Moving files between different shares is rejected
-3. **Deleting non-empty directory** — Must delete contents first (or use recursive delete)
-4. **Overwriting existing target on rename** — Rename/move fails with 409 if target exists
-5. **Request logging** — Admin GET page views are not logged (only login/logout/config changes)
+1. **Conflicting parameters** — Only one operation per request. `mkdir=1&delete=1` returns 400.
+2. **Missing trailing slash for directory root** — `/s/test?key=abc` works, but `/s/test/?key=abc` is also valid
+3. **Cross-share move** — Moving files between different shares is rejected
+4. **Deleting non-empty directory** — Must delete contents first (or use recursive delete)
+5. **Overwriting existing target on rename** — Rename/move fails with 409 if target exists
+6. **Request logging** — Admin GET page views are not logged (only login/logout/config changes)

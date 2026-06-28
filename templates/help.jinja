@@ -33,7 +33,7 @@
   <div class="container">
     <div class="card">
       <h2>AI Web FTP &mdash; Agent Skill Reference</h2>
-      <p class="subtitle">HTTP-based file service for LLM agents. Full CRUD via GET-only queries.</p>
+      <p class="subtitle">HTTP-based file service for LLM agents. Full CRUD via GET-only queries. Only one operation per request.</p>
 
       <h3>Overview</h3>
       <p>AI Web FTP exposes remote file operations as simple HTTP requests. Agents limited to <strong>GET-only</strong> (no headers, no body) can still create, read, update, and delete files using query parameters.</p>
@@ -86,6 +86,7 @@ DELETE /s/{path}?key=xxx              # Delete file or empty dir</pre>
         <tr><td><code>raw</code></td><td>0/1</td><td>Raw file content as text</td></tr>
         <tr><td><code>download</code></td><td>0/1</td><td>Force file download</td></tr>
         <tr><td><code>help</code></td><td>string</td><td>Attach docs: basic, full, md</td></tr>
+        <tr><td><code>filename</code></td><td>string</td><td>Override upload filename</td></tr>
       </table>
 
       <h4>Security Constraints</h4>
@@ -109,6 +110,8 @@ DELETE /s/{path}?key=xxx              # Delete file or empty dir</pre>
 
       <h4>2. Upload from URL (GET-only)</h4>
       <pre>GET /s/data/uploads?key=abc123&amp;upload_url=https://example.com/file.zip</pre>
+      <p>Override filename with <code>&amp;filename=out.zip</code>:</p>
+      <pre>GET /s/data/uploads?key=abc123&amp;upload_url=https://example.com/download&amp;filename=package.zip</pre>
 
       <h4>3. Upload text content (GET-only)</h4>
       <pre>GET /s/data/notes/hello.txt?key=abc123&amp;content=Hello+World</pre>
@@ -148,6 +151,7 @@ GET /s/data/newproject/main.py?key=abc123&amp;content=print("hello")</pre>
 
       <h3>Common Mistakes</h3>
       <ul>
+        <li><strong>Conflicting parameters</strong> &mdash; Only one operation per request. <code>mkdir=1&amp;delete=1</code> returns 400.</li>
         <li><strong>Missing trailing slash</strong> &mdash; <code>/s/test?key=abc</code> and <code>/s/test/?key=abc</code> both work</li>
         <li><strong>Cross-share move</strong> &mdash; Moving files between different shares is rejected with 403</li>
         <li><strong>Delete non-empty dir</strong> &mdash; Must delete contents first (returns 409)</li>
