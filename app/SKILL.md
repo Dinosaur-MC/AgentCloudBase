@@ -1,6 +1,6 @@
 ---
 name: ai-web-ftp
-description: Use when an AI Agent needs to read, write, delete, or manage files on a remote server via HTTP. Covers all CRUD operations, permission models, and security constraints.
+description: Use when an AI agent needs to read, write, delete, or manage files on a remote server via HTTP.
 ---
 
 # AI Web FTP — Agent Skill Reference
@@ -20,6 +20,44 @@ AI Web FTP is an HTTP-based file service designed for LLM agents. All file opera
 **Important:** Only one operation per request. Conflicting parameters (`mkdir` + `delete`, etc.) return 400.
 
 **Do NOT use when:** You need real-time sync, WebDAV compatibility, or multi-user authentication beyond a shared access key.
+
+**⚠️ Required discipline:** Always follow the [Agent Workflow](#agent-workflow) — **list → read key files → check permissions → then act**. Never write or delete without first listing the directory and understanding what exists.
+
+## Agent Workflow
+
+**Always follow this sequence. Do not skip steps.**
+
+```
+1. LIST →   GET /s/root?key=xxx&all=1     — Understand directory structure (include hidden files)
+2. READ →   GET /s/root/file?key=xxx      — Read key files to understand context
+3. CHECK →  GET /perm/root?key=xxx        — Verify you have the required permissions
+4. DECIDE → Analyze the goal: modify existing files or create new ones?
+5. ACT  →   Write / edit / delete (never before steps 1-4 are complete)
+```
+
+**Why this order?**
+- Writing without listing first risks overwriting existing files or creating duplicates
+- Editing without reading first may break existing content or introduce incompatible changes
+- Acting without checking permissions wastes a request on a 403 error
+
+**Golden rule: read at least one existing file before deciding what to write.** If the task involves modifying a project, you must read at least one relevant source file first.
+
+### Example flow
+
+```
+# 1. List the directory
+GET /s/project?key=xxx&all=1
+
+# 2. Read key files to understand format and content
+GET /s/project/README.md?key=xxx
+GET /s/project/src/main.py?key=xxx
+
+# 3. Check permissions
+GET /s/project?key=xxx&json=1  (check response for write permission)
+
+# 4. Now perform the operation
+GET /s/project/src/main.py?key=xxx&content=... 
+```
 
 ## Core Pattern
 
@@ -98,6 +136,15 @@ GET /perm/{path}?key=xxx
 
 ## Usage Patterns
 
+### Pattern 0: List directory contents (always start here)
+
+```
+GET /s/data?key=abc123&all=1
+```
+- Returns all entries (files/subdirectories) in the directory; `&all=1` includes hidden files (dot-files)
+- Always inspect the structure before deciding which files to access — prevents blind operations
+- Recurse into subdirectories until you find the target file
+
 ### Pattern 1: Read a file (GET-only agent)
 
 ```
@@ -135,6 +182,13 @@ Content-Type: application/octet-stream
 <binary data>
 ```
 
+### Pattern 5: Create directory + upload file
+
+```
+GET /s/data/newproject?key=abc123&mkdir=1
+GET /s/data/newproject/main.py?key=abc123&content=print(%22hello%22)
+```
+
 ### Pattern 6: Edit text file (precision string replacement)
 
 ```
@@ -146,12 +200,6 @@ Replaces the first occurrence of `debug:true` with `debug:false` in `config.json
 GET /tool/edit?path=/data/README.md&key=abc123&old_str=v1.0&new_str=v2.0&replace_all=1
 ```
 
-### Pattern 5: Create directory + upload file
-
-```
-GET /s/data/newproject?key=abc123&mkdir=1
-GET /s/data/newproject/main.py?key=abc123&content=print(%22hello%22)
-```
 ## Error Handling
 
 All errors return appropriate HTTP status codes:
@@ -168,8 +216,9 @@ With `?json=1`, errors return `{"success": false, "error": "...", "code": N}`.
 
 ## Common Mistakes
 
-1. **Conflicting parameters** — Only one operation per request. `mkdir=1&delete=1` returns 400.
-2. **Missing trailing slash for directory root** — `/s/test?key=abc` works, but `/s/test/?key=abc` is also valid
-3. **Cross-share move** — Moving files between different shares is rejected
-4. **Deleting non-empty directory** — Must delete contents first (or use recursive delete)
-5. **Overwriting existing target on rename** — Rename/move fails with 409 if target exists
+1. **Writing before reading** — Never create/edit/delete files before listing the directory and reading at least one existing file. Blind writes cause duplication, overwrites, and broken projects. Always follow the [Agent Workflow](#agent-workflow).
+2. **Conflicting parameters** — Only one operation per request. `mkdir=1&delete=1` returns 400.
+3. **Missing trailing slash for directory root** — `/s/test?key=abc` works, but `/s/test/?key=abc` is also valid
+4. **Cross-share move** — Moving files between different shares is rejected
+5. **Deleting non-empty directory** — Must delete contents first (or use recursive delete)
+6. **Overwriting existing target on rename** — Rename/move fails with 409 if target exists
