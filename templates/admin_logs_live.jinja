@@ -127,6 +127,7 @@
   let filteredIds = new Set();
   let autoScroll = true;
   let ws = null;
+  let connected = false;  // true after receiving 'init' — real connection established
   let reconnectTimer = null;
   let reconnectDelay = 1000;
 
@@ -149,11 +150,12 @@
     };
 
     ws.onclose = function(e) {
-      if (e.code === 4001) {
+      if (!connected) {
+        // Never received 'init' — connection failed (auth expired, server rejected, etc.)
         setStatus('off', '认证失败');
-        setTimeout(function() { window.location.href = '/admin'; }, 2000);
         return;
       }
+      connected = false;
       setStatus('off', '已断开');
       scheduleReconnect();
     };
@@ -162,6 +164,7 @@
       var msg;
       try { msg = JSON.parse(e.data); } catch(_) { return; }
       if (msg.type === 'init') {
+        connected = true;
         allEntries = msg.entries || [];
         applyFilters();
       } else if (msg.type === 'entry') {
