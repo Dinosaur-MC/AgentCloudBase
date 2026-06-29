@@ -2,6 +2,20 @@
 <html lang="zh-CN">
 <head><title>管理面板</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  function generateKey() {
+    var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    var key = '';
+    for (var i = 0; i < 32; i++) {
+      if (i > 0 && i % 8 === 0) key += '-';
+      key += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return key;
+  }
+  function fillKey(id) {
+    document.getElementById(id).value = generateKey();
+  }
+</script>
 <style>
   :root{--primary:#3b82f6;--bg:#0f172a;--surface:#1e293b;--card:#1e293b;--border:#334155;--text:#e2e8f0;--muted:#94a3b8;--success:#22c55e;--danger:#ef4444;--tag-h:22px;--radius:6px}
   *{margin:0;padding:0;box-sizing:border-box}
@@ -140,7 +154,8 @@
           </div>
           <div class="form-row">
             <div class="field-group">
-              <input name="access_key" type="text" placeholder="新密钥(留空不变)" value="" size="16">
+              <input name="access_key" type="text" placeholder="新密钥(留空不变)" value="" size="16" id="update_access_key_{{ share.id }}">
+              <button type="button" class="btn" style="background:var(--muted);color:#fff;white-space:nowrap;font-size:11px;padding:0 8px" onclick="fillKey('update_access_key_{{ share.id }}')">🎲 生成</button>
               <input name="access_key_expires" type="date" value="{{ share.access_key_expires[:10] if share.access_key_expires else '' }}">
             </div>
             <button class="btn btn-delete" type="submit" formaction="/admin/shares/delete/{{ share.id }}" formmethod="post">删除</button>
@@ -170,7 +185,12 @@
               <label><input type="checkbox" name="rename_perm"> rename</label>
             </div>
           </div>
-          <div class="form-full"><label>访问密钥</label><input name="access_key" required></div>
+          <div class="form-full"><label>访问密钥</label>
+            <div style="display:flex;gap:8px">
+              <input name="access_key" id="new_access_key" required style="flex:1">
+              <button type="button" class="btn" style="background:var(--muted);color:#fff;white-space:nowrap" onclick="fillKey('new_access_key')">🎲 生成</button>
+            </div>
+          </div>
         </div>
         <div class="add-submit"><button class="btn btn-primary" type="submit">添加共享</button></div>
       </form>
