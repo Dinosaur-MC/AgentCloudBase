@@ -33,7 +33,7 @@ async def log_requests(
     path = request.url.path
     if not (
         request.method == "GET"
-        and (path.startswith("/admin") or path.startswith("/.well-known/"))
+        and (path.startswith("/admin") or path.startswith("/.well-known/") or path == "/favicon.ico")
     ):
         write_log(
             {
