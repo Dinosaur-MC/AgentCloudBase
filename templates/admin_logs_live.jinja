@@ -238,7 +238,7 @@
     // Timestamp
     var ts = document.createElement('span');
     ts.className = 'ts';
-    ts.textContent = (e.timestamp || '').substring(11, 19);
+    ts.textContent = (e.timestamp || '').substring(0, 19);
     div.appendChild(ts);
 
     // Action badge
