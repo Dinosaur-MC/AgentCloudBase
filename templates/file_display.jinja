@@ -57,6 +57,12 @@
         <a href="/s/{{ path }}?key={{ key }}&download=1"><button class="out">下载</button></a>
         <a href="/s/{{ path.rsplit('/',1)[0] }}?key={{ key }}"><button class="out">上级</button></a>
       </div>
+      {% elif is_text %}
+      <div class="toolbar">
+        <a href="/s/{{ path }}?key={{ key }}&raw=1"><button class="out">原始</button></a>
+        <a href="/s/{{ path }}?key={{ key }}&download=1"><button class="out">下载</button></a>
+        <a href="/s/{{ path.rsplit('/',1)[0] }}?key={{ key }}"><button class="out">上级</button></a>
+      </div>
       {% endif %}
       <div class="ca">
         {% if is_text %}
