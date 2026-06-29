@@ -11,6 +11,7 @@ from app.utils import (
     ShareConfig,
 )
 
+
 async def require_admin(request: Request):
     """依赖项：要求管理员登录，未登录则 401"""
     admin = get_admin_from_cookie(request)

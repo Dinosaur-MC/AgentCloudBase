@@ -127,6 +127,11 @@ async def update_share(
     enabled: bool = Form(False),
     access_key: str = Form(""),
     access_key_expires: str = Form(""),
+    list_perm: bool = Form(False),
+    read_perm: bool = Form(False),
+    write_perm: bool = Form(False),
+    delete_perm: bool = Form(False),
+    rename_perm: bool = Form(False),
     admin=Depends(require_admin),
 ):
     configs = load_config()
@@ -136,6 +141,13 @@ async def update_share(
             if access_key:
                 share.access_key = access_key
             share.access_key_expires = access_key_expires
+            share.permissions = {
+                "list": list_perm,
+                "read": read_perm,
+                "write": write_perm,
+                "delete": delete_perm,
+                "rename": rename_perm,
+            }
             save_config(configs)
             write_log(
                 {"action": "share_updated", "id": share_id, "ip": request.client.host}
@@ -159,29 +171,49 @@ async def view_logs(
     if f.action:
         all_logs = [l for l in all_logs if l.get("action") == f.action]
     if f.path_filter:
-        all_logs = [l for l in all_logs if f.path_filter.lower() in l.get("path", "").lower()]
+        all_logs = [
+            l for l in all_logs if f.path_filter.lower() in l.get("path", "").lower()
+        ]
     if f.ip_filter:
         all_logs = [l for l in all_logs if f.ip_filter in l.get("ip", "")]
     if f.keyword:
         kw = f.keyword.lower()
-        all_logs = [l for l in all_logs if kw in json.dumps(l, ensure_ascii=False).lower()]
+        all_logs = [
+            l for l in all_logs if kw in json.dumps(l, ensure_ascii=False).lower()
+        ]
     if f.date_from:
         try:
             dt_from = datetime.fromisoformat(f.date_from)
-            all_logs = [l for l in all_logs if datetime.fromisoformat(l["timestamp"]) >= dt_from]
-        except (ValueError, KeyError): pass
+            all_logs = [
+                l for l in all_logs if datetime.fromisoformat(l["timestamp"]) >= dt_from
+            ]
+        except (ValueError, KeyError):
+            pass
     if f.date_to:
         try:
             dt_to = datetime.fromisoformat(f.date_to + "T23:59:59")
-            all_logs = [l for l in all_logs if datetime.fromisoformat(l["timestamp"]) <= dt_to]
-        except (ValueError, KeyError): pass
+            all_logs = [
+                l for l in all_logs if datetime.fromisoformat(l["timestamp"]) <= dt_to
+            ]
+        except (ValueError, KeyError):
+            pass
     total_logs = len(all_logs)
     offset = (f.page - 1) * f.per_page
-    logs = list(reversed(all_logs))[offset: offset + f.per_page]
+    logs = list(reversed(all_logs))[offset : offset + f.per_page]
     total_pages = max(1, (total_logs + f.per_page - 1) // f.per_page)
-    return templates.TemplateResponse(request, "admin_logs.jinja", {
-        "logs": logs, "page": f.page, "total_pages": total_pages, "total_logs": total_logs,
-        "action": f.action or "", "path_filter": f.path_filter or "",
-        "ip_filter": f.ip_filter or "", "keyword": f.keyword or "",
-        "date_from": f.date_from or "", "date_to": f.date_to or "",
-    })
+    return templates.TemplateResponse(
+        request,
+        "admin_logs.jinja",
+        {
+            "logs": logs,
+            "page": f.page,
+            "total_pages": total_pages,
+            "total_logs": total_logs,
+            "action": f.action or "",
+            "path_filter": f.path_filter or "",
+            "ip_filter": f.ip_filter or "",
+            "keyword": f.keyword or "",
+            "date_from": f.date_from or "",
+            "date_to": f.date_to or "",
+        },
+    )
