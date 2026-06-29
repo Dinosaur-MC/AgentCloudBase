@@ -60,7 +60,7 @@
       {% endif %}
       <div class="ca">
         {% if is_text %}
-        <pre>{{ content }}</pre>
+        <pre>{{ content|e }}</pre>
         {% else %}
         <div class="bn">
           <p>二进制文件，无法预览</p>

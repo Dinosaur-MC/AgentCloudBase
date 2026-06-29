@@ -1,10 +1,21 @@
 """共享资源：模板引擎、帮助文本"""
 
 from pathlib import Path
+from jinja2 import Environment, FileSystemLoader
 from fastapi.templating import Jinja2Templates
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+
+def _autoescape(template_name: str) -> bool:
+    return template_name is None or template_name.endswith((".html", ".jinja"))
+
+
+env = Environment(
+    loader=FileSystemLoader(str(TEMPLATES_DIR)),
+    autoescape=_autoescape,
+)
+templates = Jinja2Templates(env=env)
 
 HELP_MD_PATH = Path(__file__).parent / "SKILL.md"
 HELP_MD = HELP_MD_PATH.read_text(encoding="utf-8")
