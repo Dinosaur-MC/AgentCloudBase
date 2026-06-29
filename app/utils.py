@@ -250,10 +250,8 @@ def validate_filename(name: str) -> str:
         )
     if "\0" in name:
         raise HTTPException(status_code=400, detail="Invalid filename")
-    if name.startswith(".") or name.endswith("."):
-        raise HTTPException(
-            status_code=400, detail="Filename cannot start or end with a dot"
-        )
+    if name.endswith("."):
+        raise HTTPException(status_code=400, detail="Filename cannot end with a dot")
     # 替换 Windows 保留字符
     cleaned = re.sub(r'[<>:"|?*]', "_", name)
     cleaned = unicodedata.normalize("NFC", cleaned).strip()

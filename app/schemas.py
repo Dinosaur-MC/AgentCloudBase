@@ -10,7 +10,8 @@ class FileQuery(BaseModel):
     key: str = ""
     raw: bool = False
     download: bool = False
-    json: bool = Field(False, alias="json")
+    json_mode: bool = Field(False, alias="json")
+    all: bool = False
     mkdir: bool = False
     upload_url: Optional[str] = None
     content: Optional[str] = None
@@ -19,10 +20,6 @@ class FileQuery(BaseModel):
     move_to: Optional[str] = None
     filename: Optional[str] = None
     help: Optional[str] = None
-
-    @property
-    def json_mode(self) -> bool:
-        return self.json
 
     @property
     def has_write_op(self) -> bool:
@@ -64,12 +61,8 @@ class FileUploadParams(BaseModel):
     """PUT/POST 上传参数"""
 
     key: str = ""
-    json: bool = Field(False, alias="json")
+    json_mode: bool = Field(False, alias="json")
     filename: Optional[str] = None
-
-    @property
-    def json_mode(self) -> bool:
-        return self.json
 
 
 class EditParams(BaseModel):
@@ -80,11 +73,7 @@ class EditParams(BaseModel):
     old_str: str
     new_str: str
     replace_all: bool = False
-    json: bool = Field(False, alias="json")
-
-    @property
-    def json_mode(self) -> bool:
-        return self.json
+    json_mode: bool = Field(False, alias="json")
 
 
 class HelpParams(BaseModel):

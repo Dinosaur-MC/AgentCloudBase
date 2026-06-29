@@ -77,6 +77,9 @@ Lists a directory or displays a file based on whether `path` resolves to a file 
 # List directory contents
 curl "http://localhost:8000/s/data?key=abc123"
 
+# List directory including hidden files (dot-files)
+curl "http://localhost:8000/s/data?key=abc123&all=1"
+
 # View file content (HTML preview)
 curl "http://localhost:8000/s/data/readme.txt?key=abc123"
 
@@ -162,7 +165,7 @@ Each share has five independent boolean permissions:
 - **Path traversal prevention** — All paths are resolved via `os.path.realpath()` with boundary checks
 - **Rate limiting** — Write operations limited to 60/minute per key (configurable)
 - **File size limits** — 500 MB per upload, 64 KB for inline content uploads
-- **Filename sanitization** — Dangerous characters stripped, path separators rejected, max 255 chars
+- **Filename sanitization** — Dangerous characters stripped, path separators rejected, max 255 chars, names ending with a dot rejected
 - **Atomic writes** — Files are written to a `.tmp` path then atomically renamed
 - **Audit logging** — All access denials and operations are logged with masked keys
 

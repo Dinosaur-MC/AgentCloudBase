@@ -77,6 +77,7 @@ GET /perm/{path}?key=xxx
 | `json` | int (0/1) | Return JSON instead of HTML |
 | `raw` | int (0/1) | Return raw file content as plain text |
 | `download` | int (0/1) | Force file download |
+| `all` | int (0/1) | Show hidden files (dot-files) in directory listing |
 | `help` | string | Attach documentation: basic, full, md |
 | `filename` | string | Override filename for upload (upload_url/content/PUT/POST) |
 | `path` | string | Target file path (used by `/tool/edit`) |

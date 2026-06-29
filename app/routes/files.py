@@ -169,7 +169,7 @@ async def serve_content(
             raise HTTPException(status_code=403, detail="Listing not allowed")
         entries = []
         for entry in sorted(abs_path.iterdir()):
-            if entry.name.startswith("."):
+            if not q.all and entry.name.startswith("."):
                 continue
             st = entry.stat()
             entry_type = "dir" if entry.is_dir() else "file"
@@ -197,6 +197,7 @@ async def serve_content(
                 "can_write": share.permissions.get("write", False),
                 "can_delete": share.permissions.get("delete", False),
                 "can_rename": share.permissions.get("rename", False),
+                "show_all": q.all,
             }
         )
         return _resp("listing.jinja", ctx)
@@ -322,7 +323,7 @@ async def serve_content_post(
             request, share, abs_path, path, q.key, file, json_mode, q.filename
         )
     return await serve_content(
-        request=request, path=path, key=q.key, json=int(q.json), mkdir=mkdir
+        request=request, path=path, key=q.key, json=int(q.json_mode), mkdir=mkdir
     )
 
 
@@ -333,7 +334,7 @@ async def serve_content_delete(
     q: FileQuery = Depends(),
 ):
     return await serve_content(
-        request=request, path=path, key=q.key, json=int(q.json), delete=1
+        request=request, path=path, key=q.key, json=int(q.json_mode), delete=1
     )
 
 

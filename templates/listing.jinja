@@ -37,33 +37,42 @@
     <div class="card">
       <div class="ch">
         <h2>/{{ path }}</h2>
-        <div class="meta">{{ share_name }} | {{ entries|length }} 项</div>
+        <div class="meta">{{ share_name }} | {{ entries|length }} 项
+          {% if show_all %}
+            | <a href="?key={{ key }}" style="font-size:11px">隐藏点文件</a>
+          {% else %}
+            | <a href="?key={{ key }}&all=1" style="font-size:11px">显示隐藏文件</a>
+          {% endif %}
+        </div>
       </div>
       {% if can_write %}
       <div class="toolbar">
-        <form method="post" action="/s/{{ path }}?key={{ key }}" enctype="multipart/form-data">
+        <form method="post" action="/s/{{ path }}?key={{ key }}{{ all_suffix }}" enctype="multipart/form-data">
           <input type="file" name="file" required>
           <button type="submit">上传</button>
         </form>
         <form method="get" action="/s/{{ path }}">
           <input name="key" type="hidden" value="{{ key }}">
+          {% if show_all %}<input name="all" type="hidden" value="1">{% endif %}
           <input name="upload_url" placeholder="从 URL 拉取" size="24">
           <button type="submit">拉取</button>
         </form>
       </div>
       {% endif %}
+      {% set all_suffix = "&all=1" if show_all else "" %}
       <ul class="fl">
       {% for entry in entries %}
         <li>
-          <a href="/s/{{ path.rstrip('/') }}/{{ entry.name }}?key={{ key }}">{{ entry.name }}</a>
+          <a href="/s/{{ path.rstrip('/') }}/{{ entry.name }}?key={{ key }}{{ all_suffix }}">{{ entry.name }}</a>
           <div class="s">
             <span>{% if entry.type=="file" %}{{ entry.size|filesizeformat }}{% else %}dir{% endif %}</span>
             {% if can_delete %}
-            <a href="/s/{{ path.rstrip('/') }}/{{ entry.name }}?key={{ key }}&delete=1" onclick="return confirm('删除 {{ entry.name }}？')" class="del">del</a>
+            <a href="/s/{{ path.rstrip('/') }}/{{ entry.name }}?key={{ key }}&delete=1{{ all_suffix }}" onclick="return confirm('删除 {{ entry.name }}？')" class="del">del</a>
             {% endif %}
             {% if can_rename %}
             <form class="rf" method="get" action="/s/{{ path.rstrip('/') }}/{{ entry.name }}">
               <input name="key" type="hidden" value="{{ key }}">
+              {% if show_all %}<input name="all" type="hidden" value="1">{% endif %}
               <input name="rename_to" placeholder="新名" required>
               <button type="submit">mv</button>
             </form>
