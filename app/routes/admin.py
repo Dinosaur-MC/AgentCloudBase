@@ -4,12 +4,14 @@ import os
 import json
 import hashlib
 import time
+import asyncio
 from datetime import datetime
 
-from fastapi import APIRouter, Request, Depends, HTTPException, Form, status
+from fastapi import APIRouter, Request, Depends, HTTPException, Form, status, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.config import settings
+from app.log_stream import ring_buffer, manager
 from app.utils import (
     ShareConfig,
     load_config,
@@ -217,3 +219,56 @@ async def view_logs(
             "date_to": f.date_to or "",
         },
     )
+
+
+@router.get("/admin/logs/live", response_class=HTMLResponse)
+async def admin_logs_live(request: Request):
+    """实时日志流页面"""
+    admin = get_admin_from_cookie(request)
+    if not admin:
+        return RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+    return templates.TemplateResponse(request, "admin_logs_live.jinja", {})
+
+
+@router.websocket("/admin/logs/stream")
+async def log_stream_endpoint(websocket: WebSocket):
+    """WebSocket 实时日志推送"""
+    # ── JWT 鉴权 ──
+    token = websocket.cookies.get("admin_token")
+    if not token:
+        await websocket.close(code=4001)
+        return
+
+    try:
+        from jose import jwt
+
+        payload = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.jwt_algorithm]
+        )
+        if payload.get("sub") != "admin":
+            await websocket.close(code=4001)
+            return
+    except Exception:
+        await websocket.close(code=4001)
+        return
+
+    # ── 连接建立 ──
+    await manager.connect(websocket)
+
+    # 发送初始历史（最新的在前）
+    entries = ring_buffer.snapshot()
+    entries.reverse()
+    await websocket.send_json({"type": "init", "entries": entries})
+
+    try:
+        while True:
+            try:
+                await asyncio.wait_for(websocket.receive_text(), timeout=30)
+                # 暂不处理客户端消息，预留未来扩展
+            except asyncio.TimeoutError:
+                # 心跳
+                await websocket.send_json({"type": "ping"})
+    except (WebSocketDisconnect, Exception):
+        pass
+    finally:
+        manager.disconnect(websocket)
