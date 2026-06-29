@@ -82,6 +82,7 @@
         <a href="/admin/logs">日志</a>
         <a href="/admin/logs/live">实时日志</a>
         <a href="/admin/stats">统计</a>
+        <a href="/help?level=basic">帮助</a>
         <a href="/admin/logout">登出</a>
       </div>
     </div>
@@ -100,7 +101,7 @@
       {% for share in shares %}
       <div class="share-card">
         <div class="title-line">
-          <span class="name">{{ share.name }}</span>
+          <a href="/s{{ share.virtual_path }}?key={{ share.access_key }}" target="_blank" class="name" style="text-decoration:none;color:inherit">{{ share.name }}</a>
           {% if share.enabled %}
             <span class="tag tag-on">启用</span>
           {% else %}
