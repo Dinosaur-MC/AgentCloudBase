@@ -161,6 +161,10 @@ def write_log(entry: dict):
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
     if _counter_for_cleanup():
         _cleanup_old_logs()
+    # 推送到实时日志流
+    from app.log_stream import publish as _stream_publish
+
+    _stream_publish(entry)
 
 
 def iter_all_logs() -> List[dict]:
