@@ -31,7 +31,10 @@ async def log_requests(
     response = await call_next(request)
     duration_ms = int((time.time() - start) * 1000)
     path = request.url.path
-    if not (request.method == "GET" and path.startswith("/admin")):
+    if not (
+        request.method == "GET"
+        and (path.startswith("/admin") or path.startswith("/.well-known/"))
+    ):
         write_log(
             {
                 "action": "request",
