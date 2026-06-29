@@ -3,33 +3,43 @@
 <head><title>访问日志</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root{--primary:#2563eb;--bg:#f1f5f9;--card:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b}
+  :root{--primary:#3b82f6;--bg:#0f172a;--surface:#1e293b;--card:#1e293b;--border:#334155;--text:#e2e8f0;--muted:#94a3b8;--tag-h:22px;--radius:6px}
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding:24px}
   .container{max-width:1100px;margin:0 auto}
   .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
   .header h1{font-size:22px;font-weight:600}
   .header a{color:var(--primary);text-decoration:none;font-size:14px}
-  .header a:hover{text-decoration:underline}
+  .header a:hover{color:#60a5fa;text-decoration:underline}
   .filter-form{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:end}
   .filter-form .f{display:flex;flex-direction:column;gap:2px}
   .filter-form .f label{font-size:11px;color:var(--muted)}
-  .filter-form select,.filter-form input{padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none}
+  .filter-form select,.filter-form input{padding:5px 8px;background:#0f172a;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none;color:var(--text)}
   .filter-form select:focus,.filter-form input:focus{border-color:var(--primary)}
   .filter-form button{padding:6px 16px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer}
-  .filter-form button:hover{background:#1d4ed8}
+  .filter-form button:hover{background:#2563eb}
   .filter-form .reset{font-size:13px;color:var(--muted);padding:6px}
+  .filter-form .reset:hover{color:var(--text)}
   .tw{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
   table{width:100%;border-collapse:collapse;font-size:13px}
-  th{background:#f8fafc;text-align:left;padding:9px 12px;font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap}
-  td{padding:7px 12px;border-bottom:1px solid #f1f5f9}
+  th{background:#0f172a;text-align:left;padding:9px 12px;font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--muted)}
+  td{padding:7px 12px;border-bottom:1px solid #1e293b}
   tr:last-child td{border-bottom:none}
-  tr:hover td{background:#f8fafc}
+  tr:hover td{background:rgba(255,255,255,.03)}
   .ld{font-size:11px;color:var(--muted);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .empty{text-align:center;padding:40px;color:var(--muted)}
   .pg{padding:12px;display:flex;justify-content:center;align-items:center;gap:12px;font-size:13px}
   .pg a{color:var(--primary);text-decoration:none}
-  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
+  .pg a:hover{color:#60a5fa}
+  .badge{display:inline-flex;align-items:center;padding:0 8px;height:20px;border-radius:4px;font-size:10px;font-weight:600;line-height:1}
+  .badge-request{background:rgba(59,130,246,.2);color:#60a5fa}
+  .badge-access{background:rgba(34,197,94,.2);color:#34d399}
+  .badge-access_denied{background:rgba(239,68,68,.2);color:#f87171}
+  .badge-admin_login{background:rgba(168,85,247,.2);color:#c084fc}
+  .badge-share_added,.badge-share_deleted,.badge-share_updated{background:rgba(34,211,238,.2);color:#22d3ee}
+  .badge-file_uploaded,.badge-file_deleted,.badge-file_renamed{background:rgba(234,179,8,.2);color:#facc15}
+  .badge-dir_created{background:rgba(249,115,22,.2);color:#fb923c}
+  code{font-family:SFMono-Regular,Menlo,monospace;font-size:12px}
 </style></head>
 <body>
   <div class="container">
@@ -73,8 +83,8 @@
         <tbody>
         {% for log in logs %}
         <tr>
-          <td style="white-space:nowrap">{{ log.timestamp }}</td>
-          <td><span class="badge">{{ log.action }}</span></td>
+          <td style="white-space:nowrap;font-size:12px">{{ log.timestamp }}</td>
+          <td><span class="badge badge-{{ log.action }}">{{ log.action }}</span></td>
           <td><code>{{ log.get('path','') }}</code></td>
           <td>{{ log.get('ip','') }}</td>
           <td>{{ log.get('status',log.get('duration_ms','')) }}</td>
