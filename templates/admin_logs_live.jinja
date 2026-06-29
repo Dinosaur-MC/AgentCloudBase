@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><title>实时日志流</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{--bg:#0f172a;--surface:#1e293b;--border:#334155;--text:#e2e8f0;--muted:#94a3b8;--green:#22c55e;--red:#ef4444;--yellow:#eab308;--blue:#3b82f6;--purple:#a855f7;--cyan:#22d3ee;--orange:#f97316}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:ui-monospace,SFMono-Regular,'Cascadia Code',Consolas,monospace;background:var(--bg);color:var(--text);font-size:13px;height:100vh;display:flex;flex-direction:column}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 顶栏 ── */
+  .topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+  .topbar h1{font-size:15px;font-weight:600}
+  .status{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:2px 10px;border-radius:999px;font-weight:500}
+  .status-on{background:#052e16;color:var(--green);border:1px solid #166534}
+  .status-off{background:#450a0a;color:var(--red);border:1px solid #991b1b}
+  .status-warn{background:#422006;color:var(--yellow);border:1px solid #854d0e}
+  .topbar .nav-links{margin-left:auto;display:flex;gap:12px;font-size:12px}
+
+  /* ── 过滤栏 ── */
+  .filterbar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;font-size:12px}
+  .filterbar select,.filterbar input{padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;font-family:inherit;outline:none}
+  .filterbar select:focus,.filterbar input:focus{border-color:var(--blue)}
+  .filterbar label{color:var(--muted);display:flex;align-items:center;gap:4px}
+  .filterbar .btn{padding:3px 10px;background:var(--border);border:none;border-radius:4px;color:var(--text);font-size:11px;cursor:pointer}
+  .filterbar .btn:hover{background:#475569}
+  .filterbar .btn.active{background:var(--blue);color:#fff}
+  .filterbar .count{color:var(--muted);font-size:11px;margin-left:auto}
+
+  /* ── 日志列表 ── */
+  .log-wrap{flex:1;overflow-y:auto;padding:4px 0}
+  .log-wrap .empty{padding:40px;text-align:center;color:var(--muted);font-size:13px}
+  .log-entry{display:flex;align-items:center;gap:8px;padding:3px 16px;border-bottom:1px solid rgba(51,65,85,.3);min-height:24px;line-height:1.5}
+  .log-entry:hover{background:rgba(255,255,255,.03)}
+  .log-entry .ts{color:var(--muted);flex-shrink:0;font-size:11px}
+  .log-entry .action-badge{display:inline-flex;align-items:center;padding:0 6px;border-radius:3px;font-size:10px;font-weight:600;height:18px;flex-shrink:0}
+  .log-entry .method{font-weight:600;font-size:11px;color:var(--muted);flex-shrink:0}
+  .log-entry .path{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .log-entry .status{font-weight:600;font-size:11px;flex-shrink:0;text-align:right;min-width:32px}
+  .log-entry .ip{color:var(--muted);font-size:11px;flex-shrink:0}
+  .log-entry .dur{color:var(--muted);font-size:11px;flex-shrink:0;min-width:40px;text-align:right}
+  .log-entry .detail-btn{color:var(--muted);cursor:pointer;font-size:11px;flex-shrink:0;background:none;border:none;padding:0 2px}
+  .log-entry .detail-btn:hover{color:var(--text)}
+
+  /* ── action badge 颜色 ── */
+  .act-request{background:rgba(59,130,246,.2);color:var(--blue)}
+  .act-access{background:rgba(34,197,94,.2);color:var(--green)}
+  .act-access_denied{background:rgba(239,68,68,.2);color:var(--red)}
+  .act-admin_login{background:rgba(168,85,247,.2);color:var(--purple)}
+  .act-share_added,.act-share_deleted,.act-share_updated{background:rgba(34,211,238,.2);color:var(--cyan)}
+  .act-file_uploaded,.act-file_deleted,.act-file_renamed{background:rgba(234,179,8,.2);color:var(--yellow)}
+  .act-dir_created{background:rgba(249,115,22,.2);color:var(--orange)}
+
+  /* ── status 颜色 ── */
+  .sc-2xx{color:var(--green)}
+  .sc-3xx{color:var(--yellow)}
+  .sc-4xx{color:var(--orange)}
+  .sc-5xx{color:var(--red)}
+
+  /* ── 详情弹出 ── */
+  .detail-popup{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:12px 16px;font-size:11px;max-height:200px;overflow-y:auto;z-index:10;font-family:inherit;white-space:pre-wrap;word-break:break-all}
+  .detail-popup.show{display:block}
+
+  .tick{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+  .tick-on{background:var(--green);box-shadow:0 0 4px var(--green)}
+  .tick-warn{background:var(--yellow);box-shadow:0 0 4px var(--yellow)}
+  .tick-off{background:var(--red);box-shadow:0 0 4px var(--red)}
+</style></head>
+<body>
+  <div class="topbar">
+    <h1>实时日志流</h1>
+    <span class="status status-off" id="statusBadge">
+      <span class="tick tick-off" id="statusTick"></span>
+      <span id="statusText">未连接</span>
+    </span>
+    <div class="nav-links">
+      <a href="/admin/logs">← 历史日志</a>
+      <a href="/admin">← 管理面板</a>
+    </div>
+  </div>
+
+  <div class="filterbar">
+    <label>操作 <select id="filterAction">
+      <option value="">全部</option>
+      <option value="request">request</option>
+      <option value="access">access</option>
+      <option value="access_denied">access_denied</option>
+      <option value="admin_login">admin_login</option>
+      <option value="share_added">share_added</option>
+      <option value="share_deleted">share_deleted</option>
+      <option value="share_updated">share_updated</option>
+      <option value="file_uploaded">file_uploaded</option>
+      <option value="file_deleted">file_deleted</option>
+      <option value="file_renamed">file_renamed</option>
+      <option value="dir_created">dir_created</option>
+    </select></label>
+    <label>关键词 <input id="filterKeyword" placeholder="搜索..." size="12"></label>
+    <button class="btn" id="btnClear">清屏</button>
+    <button class="btn active" id="btnScroll">自动滚动</button>
+    <span class="count" id="entryCount">0 条</span>
+  </div>
+
+  <div class="log-wrap" id="logWrap">
+    <div class="empty" id="emptyHint">等待日志...</div>
+  </div>
+
+  <div class="detail-popup" id="detailPopup"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  const logWrap = document.getElementById('logWrap');
+  const emptyHint = document.getElementById('emptyHint');
+  const statusBadge = document.getElementById('statusBadge');
+  const statusTick = document.getElementById('statusTick');
+  const statusText = document.getElementById('statusText');
+  const entryCount = document.getElementById('entryCount');
+  const filterAction = document.getElementById('filterAction');
+  const filterKeyword = document.getElementById('filterKeyword');
+  const btnClear = document.getElementById('btnClear');
+  const btnScroll = document.getElementById('btnScroll');
+  const detailPopup = document.getElementById('detailPopup');
+
+  let allEntries = [];
+  let filteredIds = new Set();
+  let autoScroll = true;
+  let ws = null;
+  let reconnectTimer = null;
+  let reconnectDelay = 1000;
+
+  // ── 连接状态 ──
+  function setStatus(mode, text) {
+    statusBadge.className = 'status status-' + mode;
+    statusTick.className = 'tick tick-' + mode;
+    statusText.textContent = text;
+  }
+
+  // ── WebSocket ──
+  function connectWS() {
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(proto + '//' + location.host + '/admin/logs/stream');
+
+    ws.onopen = function() {
+      setStatus('on', '已连接');
+      reconnectDelay = 1000;
+    };
+
+    ws.onclose = function(e) {
+      if (e.code === 4001) {
+        setStatus('off', '认证失败');
+        setTimeout(function() { window.location.href = '/admin'; }, 2000);
+        return;
+      }
+      setStatus('off', '已断开');
+      scheduleReconnect();
+    };
+
+    ws.onmessage = function(e) {
+      var msg;
+      try { msg = JSON.parse(e.data); } catch(_) { return; }
+      if (msg.type === 'init') {
+        allEntries = msg.entries || [];
+        applyFilters();
+      } else if (msg.type === 'entry') {
+        allEntries.push(msg.entry);
+        applyFilters();
+      }
+      // ping: ignore
+    };
+  }
+
+  function scheduleReconnect() {
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(function() {
+      setStatus('warn', '重连中...');
+      connectWS();
+    }, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 1.5, 30000);
+  }
+
+  // ── 过滤 ──
+  function applyFilters() {
+    const act = filterAction.value;
+    const kw = filterKeyword.value.trim().toLowerCase();
+
+    filteredIds.clear();
+    var shown = 0;
+    for (var i = 0; i < allEntries.length; i++) {
+      var e = allEntries[i];
+      if (act && e.action !== act) continue;
+      if (kw && JSON.stringify(e).toLowerCase().indexOf(kw) === -1) continue;
+      filteredIds.add(i);
+      shown++;
+    }
+
+    entryCount.textContent = shown + ' / ' + allEntries.length + ' 条';
+    render();
+  }
+
+  function render() {
+    // Clear
+    var children = logWrap.children;
+    for (var i = children.length - 1; i >= 0; i--) {
+      if (children[i].id !== 'emptyHint') logWrap.removeChild(children[i]);
+    }
+
+    if (filteredIds.size === 0) {
+      emptyHint.style.display = 'block';
+      return;
+    }
+    emptyHint.style.display = 'none';
+
+    var frag = document.createDocumentFragment();
+    var indices = Array.from(filteredIds).sort(function(a,b) { return a - b; });
+    // Show newest last (at bottom, for auto-scroll)
+    for (var j = 0; j < indices.length; j++) {
+      var idx = indices[j];
+      frag.appendChild(createEntry(allEntries[idx]));
+    }
+    logWrap.appendChild(frag);
+
+    if (autoScroll) {
+      logWrap.scrollTop = logWrap.scrollHeight;
+    }
+  }
+
+  // ── 构建单行日志 ──
+  function createEntry(e) {
+    var div = document.createElement('div');
+    div.className = 'log-entry';
+
+    // Timestamp
+    var ts = document.createElement('span');
+    ts.className = 'ts';
+    ts.textContent = (e.timestamp || '').substring(11, 19);
+    div.appendChild(ts);
+
+    // Action badge
+    var badge = document.createElement('span');
+    badge.className = 'action-badge act-' + (e.action || 'request');
+    badge.textContent = e.action || '?';
+    div.appendChild(badge);
+
+    // Method (for "request" actions)
+    if (e.method) {
+      var method = document.createElement('span');
+      method.className = 'method';
+      method.textContent = e.method;
+      div.appendChild(method);
+    }
+
+    // Path
+    if (e.path) {
+      var path = document.createElement('span');
+      path.className = 'path';
+      path.textContent = e.path;
+      div.appendChild(path);
+    }
+
+    // Status code
+    if (e.status) {
+      var st = document.createElement('span');
+      st.className = 'status sc-' + (Math.floor(e.status / 100) * 100 + 'xx');
+      st.textContent = e.status;
+      div.appendChild(st);
+    }
+
+    // IP
+    if (e.ip) {
+      var ip = document.createElement('span');
+      ip.className = 'ip';
+      ip.textContent = e.ip;
+      div.appendChild(ip);
+    }
+
+    // Duration
+    if (e.duration_ms !== undefined && e.duration_ms !== null) {
+      var dur = document.createElement('span');
+      dur.className = 'dur';
+      dur.textContent = e.duration_ms + 'ms';
+      div.appendChild(dur);
+    }
+
+    // Detail button
+    var btn = document.createElement('button');
+    btn.className = 'detail-btn';
+    btn.textContent = '📋';
+    btn.onclick = function(ev) {
+      ev.stopPropagation();
+      showDetail(e);
+    };
+    div.appendChild(btn);
+
+    return div;
+  }
+
+  // ── 详情 ──
+  function showDetail(e) {
+    detailPopup.textContent = JSON.stringify(e, null, 2);
+    detailPopup.classList.toggle('show');
+    if (detailPopup.classList.contains('show')) {
+      detailPopup.onclick = function() { detailPopup.classList.remove('show'); };
+    }
+  }
+
+  // ── 清屏 ──
+  btnClear.onclick = function() {
+    allEntries = [];
+    applyFilters();
+  };
+
+  // ── 自动滚动 ──
+  btnScroll.onclick = function() {
+    autoScroll = !autoScroll;
+    btnScroll.classList.toggle('active');
+    if (autoScroll) logWrap.scrollTop = logWrap.scrollHeight;
+  };
+
+  logWrap.onscroll = function() {
+    if (autoScroll) {
+      var atBottom = logWrap.scrollHeight - logWrap.scrollTop - logWrap.clientHeight < 40;
+      if (!atBottom) {
+        autoScroll = false;
+        btnScroll.classList.remove('active');
+      }
+    }
+  };
+
+  // ── 过滤输入防抖 ──
+  var filterTimer = null;
+  function onFilterChange() {
+    if (filterTimer) clearTimeout(filterTimer);
+    filterTimer = setTimeout(applyFilters, 150);
+  }
+  filterAction.onchange = onFilterChange;
+  filterKeyword.oninput = onFilterChange;
+
+  // ── 启动 ──
+  connectWS();
+})();
+</script>
+</body>
+</html>
