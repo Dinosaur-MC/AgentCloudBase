@@ -1,0 +1,47 @@
+/* ── 文件浏览/预览页共用样式 ── */
+:root{--primary:#2563eb;--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding:24px}
+.container{max-width:900px;margin:0 auto}
+
+/* ── 卡片 ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.ch{padding:14px 20px;border-bottom:1px solid var(--border);background:#f8fafc}
+.ch h2{font-size:16px;font-weight:600;word-break:break-all}
+.ch .meta{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* ── 工具栏 ── */
+.toolbar{padding:10px 20px;border-bottom:1px solid var(--border);background:#fafbfc;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
+.toolbar form{display:inline-flex;align-items:center;gap:6px}
+.toolbar input{padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px;outline:none}
+.toolbar input:focus{border-color:var(--primary)}
+.toolbar button,.toolbar a button{padding:4px 12px;background:var(--primary);color:#fff;border:none;border-radius:5px;font-size:12px;cursor:pointer}
+.toolbar button:hover{background:#1d4ed8}
+.toolbar .dng{background:#dc2626}
+.toolbar .dng:hover{background:#b91c1c}
+.toolbar .out{background:transparent;color:var(--text);border:1px solid var(--border)}
+.toolbar .out:hover{background:#f1f5f9}
+
+/* ── 文件列表（listing） ── */
+.fl{list-style:none}
+.fl li{padding:9px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between}
+.fl li:last-child{border-bottom:none}
+.fl li:hover{background:#f8fafc}
+.fl a{color:var(--primary);text-decoration:none;font-size:14px}
+.fl a:hover{text-decoration:underline}
+.fl .s{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.fl .s a,.fl .s button{font-size:12px;color:var(--muted);text-decoration:none;cursor:pointer;background:none;border:none;padding:2px 4px}
+.fl .s a:hover,.fl .s button:hover{color:var(--primary)}
+.fl .s .del:hover{color:#dc2626}
+.rf{display:inline-flex;align-items:center;gap:4px}
+.rf input{width:72px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;font-size:11px}
+
+/* ── 文件预览（file_display） ── */
+.ca{padding:0;overflow-x:auto}
+.ca pre{padding:20px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-all;margin:0}
+.bn{padding:40px;text-align:center;color:var(--muted)}
+.bn a{color:var(--primary);text-decoration:none}
+
+/* ── 页脚 ── */
+.cf{padding:8px 20px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);display:flex;gap:12px}
+.cf a{color:var(--primary);text-decoration:none}

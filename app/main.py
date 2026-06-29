@@ -5,6 +5,7 @@ from typing import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.utils import write_log
 from app.routes import admin, files, tools, misc
@@ -47,6 +48,9 @@ async def log_requests(
         )
     return response
 
+
+# ------------------- 静态文件 -------------------
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ------------------- 注册路由 -------------------
 app.include_router(admin.router)
